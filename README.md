@@ -2,10 +2,14 @@
 
 Sistema de autenticação e dashboard para **TOTVS RM** desenvolvido com React, Vite e Tailwind CSS.
 
+<<<<<<< HEAD
 ![React](https://img.shields.io/badge/React-18.x-blue)
 ![Vite](https://img.shields.io/badge/Vite-5.x-purple)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.x-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
+=======
+Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido com React, Tailwind CSS e shadcn/ui.
+>>>>>>> 8f9f87e90afc054b991dd6ae8c9dc88464e514ba
 
 ---
 
@@ -264,21 +268,15 @@ loginRM/
 
 ### Tela de Login
 
-![Login](https://via.placeholder.com/800x500?text=Tela+de+Login)
+![Tela de Login](./public/screenshots/login.png)
 
 *Tela de autenticação com validação em tempo real*
 
 ### Dashboard
 
-![Dashboard](https://via.placeholder.com/800x500?text=Dashboard)
+![Dashboard](./public/screenshots/dashboard.png)
 
 *Dashboard com estatísticas e gráficos*
-
-### Sidebar
-
-![Sidebar](https://via.placeholder.com/800x500?text=Sidebar)
-
-*Menu lateral navegável e retrátil*
 
 ---
 
