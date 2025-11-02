@@ -336,8 +336,8 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 **Diego Bueno**
 
 - GitHub: [@DiegoBuenoS](https://github.com/DiegoBuenoS)
-- LinkedIn: [Diego Bueno](https://linkedin.com/in/seu-perfil)
-- Email: seu.email@exemplo.com
+- LinkedIn: [Diego Bueno](https://www.linkedin.com/in/diego-bueno-cruzeiro-sp/)
+- Email: diegobuenocrz@gmail.com
 
 **Link do Projeto:** https://github.com/DiegoBuenoS/loginRM
 
