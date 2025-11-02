@@ -4,7 +4,7 @@
 [![Tailwind CSS](https://img.shields.io/badge/Tailwind%20CSS-3.0+-38B2AC.svg)](https://tailwindcss.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-Sistema moderno de autenticação integrado com a API do TOTVS Identity. Desenvolvido com React, Tailwind CSS e shadcn/ui, oferecendo uma experiência de login segura e intuitiva.
+Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido com React, Tailwind CSS e shadcn/ui.
 
 ## 🌟 Características
 
