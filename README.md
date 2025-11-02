@@ -268,13 +268,13 @@ loginRM/
 
 ### Tela de Login
 
-![Tela de Login](./public/screenshots/login.png)
+![Tela de Login](./public/screenshots/login.jpg)
 
 *Tela de autenticação com validação em tempo real*
 
 ### Dashboard
 
-![Dashboard](./public/screenshots/dashboard.png)
+![Dashboard](./public/screenshots/dashboard.jpg)
 
 *Dashboard com estatísticas e gráficos*
 
