@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
+import { User, Lock, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import {
@@ -147,10 +147,9 @@ const LoginPage = () => {
               Central RM
             </p>
             <CardTitle className="text-2xl font-semibold text-graphite-900 dark:text-graphite-50">
-              Central de Aprovações
+              Interface Web para o Seu ERP 
             </CardTitle>
             <CardDescription className="text-graphite-500 dark:text-graphite-300">
-              Acesso corporativo seguro e consistente.
             </CardDescription>
           </CardHeader>
 
@@ -174,7 +173,7 @@ const LoginPage = () => {
                   Usuário
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-400 dark:text-graphite-300" size={18} />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-400 dark:text-graphite-300" size={18} />
                   <Input
                     id="email"
                     type="text"
