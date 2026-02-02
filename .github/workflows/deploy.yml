@@ -35,7 +35,7 @@ jobs:
       run: npm run build
     
     - name: Deploy para Vercel (opcional)
-      uses: vercel/action@master
+      uses: amondnet/vercel-action@v25
       with:
         vercel-token: ${{ env.VERCEL_TOKEN }}
         vercel-org-id: ${{ env.VERCEL_ORG_ID }}
