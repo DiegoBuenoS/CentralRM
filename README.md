@@ -1,12 +1,13 @@
-# 🔐 RM Login
+# 🔐 Central RM
 
-Sistema de autenticação e dashboard para **TOTVS RM** desenvolvido com React, Vite e Tailwind CSS.
+Extensão web open source para o RM, construída com React, Vite e Tailwind CSS.
 
 ![React](https://img.shields.io/badge/React-18.x-blue)
 ![Vite](https://img.shields.io/badge/Vite-5.x-purple)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.x-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
-Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido com React, Tailwind CSS e shadcn/ui.
+
+Projeto em evolução: hoje é uma **tela de login** para acesso ao RM; no futuro será também um **app mobile em React Native**.
 
 ---
 
@@ -31,7 +32,13 @@ Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido 
 
 ## 🎯 Sobre o Projeto
 
-O **RM Login** é uma aplicação web moderna que fornece autenticação segura e um dashboard interativo para o sistema **TOTVS RM**. Desenvolvido com as mais recentes tecnologias front-end, oferece uma experiência de usuário fluida e responsiva.
+O **Central RM** é uma extensão web open source do RM. Neste momento o projeto entrega
+uma **experiência de login** integrada à API do RM, com foco em simplicidade e evolução contínua.
+
+### Visão
+
+- **Web**: extensão leve, rápida e acessível
+- **Mobile**: evolução planejada para um app React Native
 
 ### Por que este projeto?
 
@@ -49,34 +56,15 @@ O **RM Login** é uma aplicação web moderna que fornece autenticação segura 
 ### Implementadas
 
 - ✅ **Autenticação**
-  - Login com credenciais TOTVS RM
-  - Validação de formulário em tempo real
-  - Mensagens de erro persistentes
+  - Login com credenciais do RM
+  - Validação de formulário
+  - Mensagens de erro claras
   - Opção "Lembrar-me"
-  - Redirecionamento automático após login
 
-- ✅ **Dashboard**
-  - Sidebar navegável e retrátil
-  - Header com informações do usuário
-  - Cards de estatísticas (Vendas, Pedidos, NFs, Clientes)
-  - Tabela de vendas recentes
-  - Gráfico de produtos mais vendidos
-  - Design responsivo
+### Em Evolução
 
-- ✅ **Navegação**
-  - Rotas protegidas por autenticação
-  - Redirecionamento automático
-  - Navegação entre páginas
-
-### Em Desenvolvimento
-
-- 🚧 Módulo de Pedidos
-- 🚧 Módulo de Notas Fiscais
-- 🚧 Módulo de Relatórios
-- 🚧 Configurações de usuário
-- 🚧 Gráficos interativos
-- 🚧 Exportação de dados
-- 🚧 Notificações em tempo real
+- 🚧 Base para expansão de módulos RM
+- 🚧 Preparação para app React Native
 
 ---
 
@@ -181,12 +169,12 @@ Acesse: http://localhost:5173
 
 ### Endpoints da API
 
-O sistema utiliza os seguintes endpoints do TOTVS RM:
+O sistema utiliza os seguintes endpoints do RM:
 
 - `GET /api/framework/v1/users/{username}` - Autenticação e dados do usuário
 - `GET /api/framework/v1/consultaSQLServer/RealizaConsulta/{codSentenca}/{codColigada}/{codSistema}/?PARAMETERS=...` - Execução de sentenças SQL cadastradas
 
-Para mais informações, consulte a [documentação oficial do TOTVS RM](https://tdn.totvs.com/pages/releaseview.action?pageId=419548959).
+Para mais informações, consulte a documentação oficial do RM.
 
 ---
 
@@ -310,43 +298,28 @@ loginRM/
 
 ## 📸 Capturas de Tela
 
-### Tela de Login
-
-![Tela de Login](./public/screenshots/login.jpg)
-
-*Tela de autenticação com validação em tempo real*
-
-### Dashboard
-
-![Dashboard](./public/screenshots/dashboard.jpg)
-
-*Dashboard com estatísticas e gráficos*
+Em breve.
 
 ---
 
 ## 🗺️ Roadmap
 
-### Versão 1.0 (Atual)
+### Atual (Web)
 
-- [x] Sistema de autenticação
-- [x] Dashboard básico
-- [x] Sidebar navegável
-- [x] Design responsivo
+- [x] Autenticação integrada ao RM
+- [x] Base técnica para expansão de módulos
 
-### Versão 1.1 (Próxima)
+### Próximos passos
 
-- [ ] Módulo de Pedidos completo
-- [ ] Módulo de Notas Fiscais
-- [ ] Filtros e busca avançada
-- [ ] Exportação de dados (Excel/PDF)
+- [ ] Evoluir fluxo completo de solicitações
+- [ ] Melhorar observabilidade e logs
+- [ ] Padronizar contratos de API
+- [ ] Implementar i18n
 
-### Versão 2.0 (Futuro)
+### Futuro (Mobile)
 
-- [ ] Gráficos interativos (Chart.js)
-- [ ] Notificações em tempo real
-- [ ] Modo escuro
-- [ ] Suporte a múltiplos idiomas
-- [ ] Autenticação de dois fatores
+- [ ] App React Native com as principais rotinas
+- [ ] Experiência offline com sincronização
 
 ---
 
@@ -383,7 +356,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 - LinkedIn: [Diego Bueno](https://www.linkedin.com/in/diego-bueno-cruzeiro-sp/)
 - Email: diegobuenocrz@gmail.com
 
-**Link do Projeto:** https://github.com/DiegoBuenoS/loginRM
+**Link do Projeto:** https://github.com/DiegoBuenoS/CentralRM
 
 ---
 
