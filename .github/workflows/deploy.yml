@@ -12,6 +12,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' || github.event.workflow_run.conclusion == 'success'
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
     
     steps:
     - uses: actions/checkout@v4
@@ -31,10 +37,10 @@ jobs:
     - name: Deploy para Vercel (opcional)
       uses: vercel/action@master
       with:
-        vercel-token: ${{ secrets.VERCEL_TOKEN }}
-        vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-        vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-      if: ${{ secrets.VERCEL_TOKEN != '' }}
+        vercel-token: ${{ env.VERCEL_TOKEN }}
+        vercel-org-id: ${{ env.VERCEL_ORG_ID }}
+        vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
+      if: ${{ env.VERCEL_TOKEN != '' }}
       continue-on-error: true
     
     - name: Deploy para Netlify (opcional)
@@ -42,12 +48,12 @@ jobs:
       with:
         publish-dir: './dist'
         production-branch: main
-        github-token: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ github.token }}
         deploy-message: "Deploy from GitHub Actions"
       env:
-        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
-      if: ${{ secrets.NETLIFY_AUTH_TOKEN != '' }}
+        NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
+      if: ${{ env.NETLIFY_AUTH_TOKEN != '' }}
       continue-on-error: true
     
     - name: Notificar sucesso
