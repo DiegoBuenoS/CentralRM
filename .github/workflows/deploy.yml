@@ -40,7 +40,6 @@ jobs:
         vercel-token: ${{ env.VERCEL_TOKEN }}
         vercel-org-id: ${{ env.VERCEL_ORG_ID }}
         vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
-      if: ${{ env.VERCEL_TOKEN != '' }}
       continue-on-error: true
     
     - name: Deploy para Netlify (opcional)
@@ -53,7 +52,6 @@ jobs:
       env:
         NETLIFY_AUTH_TOKEN: ${{ env.NETLIFY_AUTH_TOKEN }}
         NETLIFY_SITE_ID: ${{ env.NETLIFY_SITE_ID }}
-      if: ${{ env.NETLIFY_AUTH_TOKEN != '' }}
       continue-on-error: true
     
     - name: Notificar sucesso
