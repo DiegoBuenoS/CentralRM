@@ -1,45 +1,48 @@
-/**
- * Configuração de Endpoints da API TOTVS RM
- * 
- * Baseado na documentação oficial:
- * https://tdn.totvs.com/pages/releaseview.action?pageId=419548959
- * 
- * @file Configuração de endpoints da API
- * @author Diego Bueno
- * @version 1.0.0
- */
+// API config
 
 const API_CONFIG = {
-  // URL base da API TOTVS RM
-  // Formato: http://{domínio}:{porta}
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8051',
+  // Base URL
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://dbs.brazilsouth.cloudapp.azure.com:8051',
 
-  // Endpoints da API Framework
+  // Endpoints
   AUTH: {
-    // Endpoint para autenticação de usuários
-    // GET /api/framework/v1/users/{username}
     USERS: '/api/framework/v1/users',
-    
-    // Endpoint para validar credenciais
     LOGIN: '/api/framework/v1/users',
   },
 
-  // Configurações de autenticação
+  // Auth
   AUTH_CONFIG: {
-    // TOTVS RM usa autenticação Basic (usuário e senha )
     TYPE: 'basic',
-    
-    // Contexto da aplicação (geralmente o código da empresa/coligada)
     CONTEXT: import.meta.env.VITE_CONTEXT || '1',
-    
-    // Headers customizados
     HEADERS: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
   },
 
-  // Configurações gerais
+  // Consulta SQL
+  CONSULTA_SQL: {
+    BASE_PATH: '/api/framework/v1/consultaSQLServer/RealizaConsulta',
+    COD_COLIGADA_PATH: 0,
+    COD_SISTEMA: 'G',
+    COD_COLIGADA_PARAM: 1,
+    USE_UPPERCASE_PARAMS: true,
+    ENCODE_QUERY: false,
+    PARAM_KEYS: {
+      PARAMETERS: 'PARAMETERS',
+      CONTEXT: 'CONTEXT',
+    },
+    SENTENCAS: {
+      TIPO_SOLICITACAO: 'INT.001',
+      CENTRO_CUSTO: 'INT.002',
+    },
+    PARAMS: {
+      USUARIO: 'usuario',
+      CODCOLIGADA: 'codcoligada',
+    },
+  },
+
+  // General
   GENERAL: {
     REQUEST_TIMEOUT: 30000,
     DEBUG: import.meta.env.MODE === 'development',

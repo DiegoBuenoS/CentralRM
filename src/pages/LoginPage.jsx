@@ -1,41 +1,45 @@
-/**
- * Página de Login - TOTVS RM
- */
+// Login
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, AlertCircle, CheckCircle } from 'lucide-react';
-import Button from '../components/ui/Button';
-import Input from '../components/ui/Input';
-import { loginUser } from '../services/api.service';
+import { Mail, Lock, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '../components/ui/card';
+import { Separator } from '../components/ui/separator';
+import { loginUser } from '../services';
 import API_CONFIG from '../config/api.config';
+import { useTheme } from '../hooks/useTheme';
 
 const LoginPage = () => {
   const navigate = useNavigate();
   
-  // Estados do formulário
+  // Form
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  // Estados de controle
+  // UI state
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
+  const { isDarkMode, toggleTheme } = useTheme();
 
-  /**
-   * Validar email/username
-   */
+  // Validate user
   const validateEmail = (email) => {
-    // Para TOTVS RM, pode ser username ou email
     return email.trim().length > 0;
   };
 
-  /**
-   * Validar formulário antes de enviar
-   */
+  // Validate form
   const validateForm = () => {
     let isValid = true;
     setEmailError('');
@@ -57,28 +61,22 @@ const LoginPage = () => {
     return isValid;
   };
 
-  /**
-   * Manipular envio do formulário
-   */
+  // Submit
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validar formulário
+
     if (!validateForm()) {
       return;
     }
-    
-    // Limpar mensagens apenas se validação passou
+
     setError('');
     setSuccess('');
 
     setIsLoading(true);
 
     try {
-      // Fazer login
       const response = await loginUser(email, password);
 
-      // Armazenar preferência de "lembrar-me"
       if (rememberMe) {
         localStorage.setItem('rememberEmail', email);
       } else {
@@ -87,12 +85,10 @@ const LoginPage = () => {
 
       setSuccess('Login realizado com sucesso! Redirecionando...');
 
-      // Redirecionar para dashboard após 1.5 segundos
       setTimeout(() => {
-        navigate('/dashboard');
+        navigate('/tarefas');
       }, 1500);
     } catch (err) {
-      // Tratar diferentes tipos de erro
       if (err.response?.status === 401) {
         setError('Usuário ou senha incorretos');
       } else if (err.response?.status === 404) {
@@ -115,9 +111,7 @@ const LoginPage = () => {
     }
   };
 
-  /**
-   * Carregar email salvo ao montar componente
-   */
+  // Load saved email
   React.useEffect(() => {
     const savedEmail = localStorage.getItem('rememberEmail');
     if (savedEmail) {
@@ -127,114 +121,127 @@ const LoginPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-mist dark:bg-graphite-900 flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-6">
-          {/* Header */}
-          <div className="text-center space-y-2">
-            <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full flex items-center justify-center">
-                <Lock className="text-white" size={32} />
+        <Card className="border-graphite-200 shadow-sm dark:border-graphite-700">
+          <CardHeader className="text-center space-y-2">
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                aria-pressed={isDarkMode}
+                className="text-graphite-600 hover:text-graphite-900 dark:text-graphite-300 dark:hover:text-graphite-100"
+              >
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                {isDarkMode ? 'Tema claro' : 'Tema escuro'}
+              </Button>
+            </div>
+            <div className="flex justify-center">
+              <div className="w-12 h-12 rounded-lg bg-accent-600 flex items-center justify-center">
+                <Lock className="text-white" size={22} />
               </div>
             </div>
-            <h1 className="text-3xl font-bold text-gray-900">RM Login</h1>
-            <p className="text-gray-600">Autenticação TOTVS RM</p>
-          </div>
+            <p className="text-xs uppercase tracking-[0.18em] text-graphite-500 dark:text-graphite-300">
+              Central RM
+            </p>
+            <CardTitle className="text-2xl font-semibold text-graphite-900 dark:text-graphite-50">
+              Central de Aprovações
+            </CardTitle>
+            <CardDescription className="text-graphite-500 dark:text-graphite-300">
+              Acesso corporativo seguro e consistente.
+            </CardDescription>
+          </CardHeader>
 
-          {/* Mensagens de status */}
-          {error && (
-            <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 flex items-start space-x-3">
-              <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5" size={20} />
-              <p className="text-red-700 text-sm">{error}</p>
-            </div>
-          )}
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3 dark:bg-red-950/40 dark:border-red-900">
+                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" size={20} />
+                <p className="text-red-700 text-sm dark:text-red-200">{error}</p>
+              </div>
+            )}
 
-          {success && (
-            <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 flex items-start space-x-3">
-              <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5" size={20} />
-              <p className="text-green-700 text-sm">{success}</p>
-            </div>
-          )}
+            {success && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3 dark:bg-green-950/40 dark:border-green-900">
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5 dark:text-green-300" size={20} />
+                <p className="text-green-700 text-sm dark:text-green-200">{success}</p>
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-graphite-700 mb-2 dark:text-graphite-200">
+                  Usuário
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-400 dark:text-graphite-300" size={18} />
+                  <Input
+                    id="email"
+                    type="text"
+                    placeholder="Digite seu usuário"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setEmailError('');
+                      setError('');
+                    }}
+                    disabled={isLoading}
+                    className={`pl-9 ${emailError ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
+                  />
+                  {emailError && <p className="mt-1 text-sm text-red-600 dark:text-red-300">{emailError}</p>}
+                </div>
+              </div>
 
-          {/* Formulário */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Campo de usuário */}
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                Usuário
-              </label>
-              <Input
-                id="email"
-                type="text"
-                placeholder="Digite seu usuário"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  setEmailError('');
-                  setError('');
-                }}
-                error={emailError}
-                icon={Mail}
-                disabled={isLoading}
-              />
-            </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-graphite-700 mb-2 dark:text-graphite-200">
+                  Senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-400 dark:text-graphite-300" size={18} />
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setPasswordError('');
+                      setError('');
+                    }}
+                    disabled={isLoading}
+                    className={`pl-9 ${passwordError ? 'border-red-500 focus-visible:ring-red-200' : ''}`}
+                  />
+                  {passwordError && <p className="mt-1 text-sm text-red-600 dark:text-red-300">{passwordError}</p>}
+                </div>
+              </div>
 
-            {/* Campo de senha */}
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Senha
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setPasswordError('');
-                  setError('');
-                }}
-                error={passwordError}
-                icon={Lock}
-                disabled={isLoading}
-              />
-            </div>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    disabled={isLoading}
+                    className="w-4 h-4 rounded border-graphite-300 text-graphite-900 focus:ring-graphite-200 cursor-pointer"
+                  />
+                  <span className="text-sm text-graphite-500 dark:text-graphite-300">Lembrar-me</span>
+                </label>
+              </div>
 
-            {/* Checkbox "Lembrar-me" */}
-            <div className="flex items-center justify-between">
-              <label className="flex items-center space-x-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  disabled={isLoading}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <span className="text-sm text-gray-600">Lembrar-me</span>
-              </label>
-            </div>
+              <Button type="submit" variant="default" size="lg" className="w-full" disabled={isLoading}>
+                {isLoading ? 'Carregando...' : 'Entrar'}
+              </Button>
+            </form>
+          </CardContent>
 
-            {/* Botão de login */}
-            <Button
-              type="submit"
-              variant="primary"
-              size="lg"
-              isLoading={isLoading}
-              className="w-full"
-            >
-              Entrar
-            </Button>
-          </form>
+          <Separator />
+          <CardFooter className="justify-center text-sm text-graphite-500 dark:text-graphite-400">
+            <p>Versão 1.0 (inicial) - Desenvolvido por Diego Bueno</p>
+          </CardFooter>
+        </Card>
 
-          {/* Footer */}
-          <div className="text-center text-sm text-gray-600">
-            <p>TOTVS RM - Sistema de Gestão</p>
-          </div>
-        </div>
-
-        {/* Debug info */}
         {API_CONFIG.GENERAL.DEBUG && (
-          <div className="mt-4 p-4 bg-gray-100 rounded-lg text-xs text-gray-600">
+          <div className="mt-4 p-4 bg-white border border-graphite-200 rounded-lg text-xs text-graphite-500 dark:bg-graphite-800 dark:border-graphite-700 dark:text-graphite-300">
             <p className="font-mono">API: {API_CONFIG.BASE_URL}</p>
             <p className="font-mono">Auth: {API_CONFIG.AUTH_CONFIG.TYPE}</p>
           </div>

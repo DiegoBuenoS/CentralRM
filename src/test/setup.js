@@ -1,20 +1,15 @@
-/**
- * Setup dos Testes
- * 
- * Configuração inicial para todos os testes unitários.
- * @file Setup de testes
- */
+// Test setup
 
 import '@testing-library/jest-dom';
 import { expect, afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// Limpar componentes após cada teste
+// Cleanup
 afterEach(() => {
   cleanup();
 });
 
-// Mock do localStorage
+// localStorage
 const localStorageMock = {
   getItem: vi.fn(),
   setItem: vi.fn(),
@@ -24,7 +19,7 @@ const localStorageMock = {
 
 global.localStorage = localStorageMock;
 
-// Mock do console para evitar poluição nos testes
+// Console
 global.console = {
   ...console,
   error: vi.fn(),

@@ -1,79 +1,171 @@
-/**
- * Estilos Globais
- * 
- * Arquivo CSS principal que importa Tailwind CSS e define estilos globais.
- */
+/* Base */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globais personalizados */
 @layer base {
   html {
     scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-white text-gray-900 antialiased;
+    @apply bg-mist text-graphite-900 antialiased font-sans;
   }
 
-  /* Estilos para inputs e textareas */
+  .dark body {
+    @apply bg-graphite-900 text-graphite-100;
+  }
+
   input,
   textarea,
   select {
     @apply transition-colors duration-200;
   }
 
-  /* Estilos para links */
   a {
     @apply transition-colors duration-200;
   }
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --radius: 0.5rem;
+  }
+  .dark {
+    --background: 0 0% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 14.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 14.9%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 14.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 14.9%;
+    --input: 0 0% 14.9%;
+    --ring: 0 0% 83.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
 }
 
-/* Componentes customizados */
+/* Components */
 @layer components {
-  /* Container principal */
   .container-main {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* Gradiente de fundo */
   .bg-gradient-primary {
-    @apply bg-gradient-to-br from-blue-50 via-white to-blue-50;
+    @apply bg-mist;
   }
 
-  /* Sombra de card */
   .shadow-card {
-    @apply shadow-lg hover:shadow-xl transition-shadow duration-300;
+    @apply shadow-sm hover:shadow transition-shadow duration-300;
   }
 
-  /* Botão base */
   .btn-base {
     @apply inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
   }
 
-  /* Input base */
   .input-base {
-    @apply w-full px-4 py-2.5 rounded-lg border-2 border-gray-200 bg-white text-gray-900 placeholder-gray-400 transition-all duration-200 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100;
+    @apply w-full px-3 py-2 rounded-md border border-graphite-200 bg-white text-graphite-900 placeholder-graphite-400 transition-all duration-200 focus:outline-none focus:border-accent-400 focus:ring-2 focus:ring-accent-100;
   }
 }
 
-/* Animações customizadas */
+/* Utilities */
 @layer utilities {
-  /* Animação de fade in */
   .animate-fade-in {
     animation: fadeIn 0.3s ease-in;
   }
 
-  /* Animação de slide up */
   .animate-slide-up {
     animation: slideUp 0.3s ease-out;
   }
 
-  /* Animação de pulse suave */
   .animate-pulse-soft {
     animation: pulseSoft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .dark .bg-white {
+    @apply bg-graphite-900;
+  }
+
+  .dark .bg-mist {
+    @apply bg-graphite-900;
+  }
+
+  .dark .bg-graphite-50 {
+    @apply bg-graphite-800;
+  }
+
+  .dark .bg-graphite-100 {
+    @apply bg-graphite-800;
+  }
+
+  .dark .text-graphite-900 {
+    @apply text-graphite-50;
+  }
+
+  .dark .text-graphite-800 {
+    @apply text-graphite-100;
+  }
+
+  .dark .text-graphite-700 {
+    @apply text-graphite-200;
+  }
+
+  .dark .text-graphite-600 {
+    @apply text-graphite-300;
+  }
+
+  .dark .text-graphite-500 {
+    @apply text-graphite-400;
+  }
+
+  .dark .border-graphite-100 {
+    @apply border-graphite-800;
+  }
+
+  .dark .border-graphite-200 {
+    @apply border-graphite-700;
+  }
+
+  .dark .border-graphite-300 {
+    @apply border-graphite-600;
   }
 }
 
@@ -107,21 +199,35 @@
   }
 }
 
-/* Scrollbar customizada */
+@layer utilities {
+  .bg-aurora {
+    background-color: #f7f8fa;
+  }
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #eef0f4;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: #c7ccd6;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #9aa3b2;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }

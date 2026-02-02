@@ -79,24 +79,16 @@ Copy-Item .env.example .env.local
 Abra o arquivo `.env.local` em um editor de texto e configure:
 
 ```env
-# URL base da API TOTVS Identity
-REACT_APP_API_BASE_URL=https://identity.totvs.com.br
+# URL base da API TOTVS RM
+VITE_API_BASE_URL=http://dbs.brazilsouth.cloudapp.azure.com:8051
 
-# Credenciais OAuth2 (obtenha com sua equipe TOTVS)
-REACT_APP_OAUTH2_CLIENT_ID=seu_client_id_aqui
-REACT_APP_OAUTH2_CLIENT_SECRET=seu_client_secret_aqui
-
-# URL de redirecionamento
-REACT_APP_REDIRECT_URI=http://localhost:5173/callback
-
-# Ambiente
-NODE_ENV=development
+# Contexto da aplicação (coligada/empresa)
+VITE_CONTEXT=1
 ```
 
 **⚠️ Importante:**
-- Substitua `seu_client_id_aqui` pelo seu Client ID real
-- Substitua `seu_client_secret_aqui` pelo seu Client Secret real
-- Essas credenciais devem ser obtidas no portal do TOTVS Identity
+- Ajuste `VITE_API_BASE_URL` para a URL do seu ambiente RM
+- Ajuste `VITE_CONTEXT` conforme sua coligada/empresa
 
 ### 4. Verificar Instalação
 
@@ -288,29 +280,6 @@ npm run test
 2. Lint passa? `npm run lint`
 3. Dependências instaladas? `npm install`
 
-## 🔐 Obtendo Credenciais TOTVS Identity
-
-### Passo 1: Acessar Portal TOTVS
-
-1. Acesse [identity.totvs.com.br](https://identity.totvs.com.br)
-2. Faça login com suas credenciais corporativas
-
-### Passo 2: Criar Aplicação
-
-1. Vá para **Aplicações** → **Nova Aplicação**
-2. Preencha os dados:
-   - **Nome**: RM Login
-   - **Tipo**: Web Application
-   - **Redirect URI**: `http://localhost:5173/callback`
-   - **Grant Types**: Authorization Code, Password
-
-### Passo 3: Obter Credenciais
-
-1. Após criar, copie:
-   - **Client ID**
-   - **Client Secret**
-2. Cole no arquivo `.env.local`
-
 ## 📱 Testando a Aplicação
 
 ### 1. Testar Interface
@@ -321,8 +290,8 @@ npm run test
 
 ### 2. Testar Autenticação
 
-1. Digite um email válido
-2. Digite uma senha (mínimo 6 caracteres)
+1. Digite um usuário válido
+2. Digite uma senha (mínimo 3 caracteres)
 3. Clique em "Entrar"
 4. Verifique mensagens de erro/sucesso
 
@@ -378,7 +347,6 @@ Após instalação bem-sucedida:
 - [ ] Projeto baixado/clonado
 - [ ] Dependências instaladas (`npm install`)
 - [ ] Arquivo `.env.local` configurado
-- [ ] Credenciais TOTVS obtidas
 - [ ] Testes passando (`npm run test`)
 - [ ] Servidor rodando (`npm run dev`)
 - [ ] Aplicação acessível em `http://localhost:5173`

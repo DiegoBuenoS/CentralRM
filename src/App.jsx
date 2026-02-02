@@ -1,29 +1,25 @@
-/**
- * Componente Principal da Aplicação
- * Gerencia o roteamento entre as páginas.
- */
+// App
 
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import { isAuthenticated } from './services/api.service';
+import { isAuthenticated } from './services';
 import './index.css';
 
-// Componente para proteger rotas autenticadas
+// Auth guard
 const ProtectedRoute = ({ children }) => {
   return isAuthenticated() ? children : <Navigate to="/" replace />;
 };
 
-// Componente para redirecionar usuários autenticados
+// Public guard
 const PublicRoute = ({ children }) => {
-  return !isAuthenticated() ? children : <Navigate to="/dashboard" replace />;
+  return !isAuthenticated() ? children : <Navigate to="/tarefas" replace />;
 };
 
 function App() {
   return (
     <Routes>
-      {/* Rota de Login */}
       <Route
         path="/"
         element={
@@ -33,7 +29,6 @@ function App() {
         }
       />
 
-      {/* Rota de Dashboard (protegida) */}
       <Route
         path="/dashboard"
         element={
@@ -43,7 +38,51 @@ function App() {
         }
       />
 
-      {/* Rota padrão - redireciona para login */}
+      <Route
+        path="/tarefas"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="tarefas" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/pedidos"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="pedidos" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/notas-fiscais"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="notas-fiscais" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/relatorios"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="relatorios" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/configuracoes"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="configuracoes" />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

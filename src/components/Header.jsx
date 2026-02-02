@@ -1,32 +1,35 @@
-/**
- * Componente Header
- * Cabeçalho do dashboard com informações do usuário.
- */
+// Header
 
 import React from 'react';
 import { User, Bell, Search } from 'lucide-react';
+import { Input } from './ui/input';
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from './ui/breadcrumb';
 
-const Header = ({ user, sidebarCollapsed }) => {
-  // Extrair nome do usuário de forma segura
+const Header = ({
+  user,
+  sidebarCollapsed,
+  title = 'Painel',
+  breadcrumb = ['Início', 'Painel'],
+}) => {
+  // User name
   const getUserName = () => {
     if (!user) return 'Usuário';
-    
-    // Se tiver name.formatted
     if (user.name && typeof user.name === 'object' && user.name.formatted) {
       return user.name.formatted;
     }
-    
-    // Se tiver givenName
     if (user.name && typeof user.name === 'object' && user.name.givenName) {
       return user.name.givenName;
     }
-    
-    // Se name for string
     if (typeof user.name === 'string') {
       return user.name;
     }
-    
-    // Se tiver username
     if (user.username) {
       return user.username;
     }
@@ -34,11 +37,9 @@ const Header = ({ user, sidebarCollapsed }) => {
     return 'Usuário';
   };
 
-  // Extrair código do usuário de forma segura
+  // User code
   const getUserCode = () => {
     if (!user) return 'N/A';
-    
-    // Tentar diferentes campos
     if (user.id) return user.id;
     if (user.code) return user.code;
     if (user.username) return user.username;
@@ -52,60 +53,83 @@ const Header = ({ user, sidebarCollapsed }) => {
       className={`
         ${sidebarCollapsed ? 'ml-20' : 'ml-64'}
         fixed top-0 right-0
-        bg-white border-b border-gray-200
+        bg-white border-b border-graphite-200
+        dark:bg-graphite-900 dark:border-graphite-700
         transition-all duration-300
         z-40
         shadow-sm
+        h-20
       `}
       style={{ width: sidebarCollapsed ? 'calc(100% - 5rem)' : 'calc(100% - 16rem)' }}
     >
-      <div className="px-6 py-4">
-        <div className="flex items-center justify-between">
-          {/* Título da página */}
+      <div className="px-6 h-full">
+        <div className="flex items-center justify-between gap-6 h-full">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-600">Bem-vindo ao painel de controle</p>
+            <Breadcrumb>
+              <BreadcrumbList>
+                {breadcrumb.map((item, index) => {
+                  const isLast = index === breadcrumb.length - 1;
+                  return (
+                    <React.Fragment key={item}>
+                      <BreadcrumbItem>
+                        {isLast ? (
+                          <BreadcrumbPage>{item}</BreadcrumbPage>
+                        ) : (
+                          <BreadcrumbLink href="#">{item}</BreadcrumbLink>
+                        )}
+                      </BreadcrumbItem>
+                      {!isLast && <BreadcrumbSeparator />}
+                    </React.Fragment>
+                  );
+                })}
+              </BreadcrumbList>
+            </Breadcrumb>
+            <h1 className="text-2xl font-semibold text-graphite-900 dark:text-graphite-50">{title}</h1>
           </div>
 
-          {/* Ações do header */}
-          <div className="flex items-center space-x-4">
-            {/* Busca */}
+          <div className="flex items-center space-x-4 pt-1">
             <div className="relative hidden md:block">
-              <input
+              <Input
                 type="text"
                 placeholder="Buscar..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-blue-500
-                         focus:border-transparent w-64"
+                className="pl-10 pr-4 w-64 text-sm text-graphite-700 bg-white dark:bg-graphite-900 dark:text-graphite-100"
               />
               <Search
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-graphite-400 dark:text-graphite-300"
                 size={18}
               />
             </div>
 
-            {/* Notificações */}
-            <button
-              className="relative p-2 text-gray-600 hover:text-gray-900
-                       hover:bg-gray-100 rounded-lg transition-colors"
-              title="Notificações"
-            >
-              <Bell size={20} />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative group">
+              <button
+                className="relative p-2 text-graphite-500 hover:text-graphite-900
+                         hover:bg-graphite-100 rounded-md transition-colors
+                         dark:text-graphite-300 dark:hover:text-graphite-100 dark:hover:bg-graphite-800"
+                title="Notificações"
+              >
+                <Bell size={20} />
+                <span className="absolute top-1 right-1 w-2 h-2 bg-accent-600 rounded-full"></span>
+              </button>
+              <div className="absolute right-0 mt-2 w-72 rounded-md border border-graphite-200 bg-white shadow-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all dark:border-graphite-700 dark:bg-graphite-900">
+                <div className="px-3 py-2 text-xs font-medium text-graphite-500 border-b border-graphite-100 dark:text-graphite-300 dark:border-graphite-700">
+                  Notificações
+                </div>
+                <div className="px-3 py-3 text-sm text-graphite-700 dark:text-graphite-200">
+                  Solicitação de Compras aguardando aprovação
+                </div>
+              </div>
+            </div>
 
-            {/* Informações do usuário */}
-            <div className="flex items-center space-x-3 pl-4 border-l border-gray-200">
+            <div className="flex items-center space-x-3 pl-4 border-l border-graphite-200 dark:border-graphite-700">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-graphite-900 dark:text-graphite-50">
                   {getUserName()}
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-graphite-500 dark:text-graphite-300">
                   Código: <span className="font-mono font-semibold">{getUserCode()}</span>
                 </p>
               </div>
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-700
-                            rounded-full flex items-center justify-center">
+              <div className="w-9 h-9 bg-accent-600 rounded-full flex items-center justify-center">
                 <User size={20} className="text-white" />
               </div>
             </div>

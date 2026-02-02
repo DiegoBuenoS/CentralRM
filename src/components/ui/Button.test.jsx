@@ -1,14 +1,9 @@
-/**
- * Testes do Componente Button
- * 
- * Testes unitários para o componente Button.
- * @file Testes do Button
- */
+// Button tests
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import Button from './Button';
+import { Button } from './button';
 
 describe('Componente Button', () => {
   it('deve renderizar o botão com texto correto', () => {
@@ -26,32 +21,25 @@ describe('Componente Button', () => {
     expect(handleClick).toHaveBeenCalledOnce();
   });
 
-  it('deve aplicar a variante primary por padrão', () => {
+  it('deve aplicar a variante default por padrão', () => {
     render(<Button>Botão</Button>);
     const button = screen.getByText('Botão');
     
-    expect(button).toHaveClass('bg-blue-600');
+    expect(button).toHaveClass('bg-primary');
   });
 
   it('deve aplicar a variante secondary quando especificada', () => {
     render(<Button variant="secondary">Botão</Button>);
     const button = screen.getByText('Botão');
     
-    expect(button).toHaveClass('bg-gray-200');
+    expect(button).toHaveClass('bg-secondary');
   });
 
   it('deve aplicar o tamanho lg quando especificado', () => {
     render(<Button size="lg">Botão Grande</Button>);
     const button = screen.getByText('Botão Grande');
     
-    expect(button).toHaveClass('px-6');
-  });
-
-  it('deve desabilitar o botão quando isLoading é true', () => {
-    render(<Button isLoading={true}>Carregando</Button>);
-    const button = screen.getByRole('button');
-    
-    expect(button).toBeDisabled();
+    expect(button).toHaveClass('h-10');
   });
 
   it('deve desabilitar o botão quando disabled é true', () => {
@@ -59,12 +47,6 @@ describe('Componente Button', () => {
     const button = screen.getByRole('button');
     
     expect(button).toBeDisabled();
-  });
-
-  it('deve exibir spinner quando isLoading é true', () => {
-    render(<Button isLoading={true}>Carregando</Button>);
-    
-    expect(screen.getByText('Carregando...')).toBeInTheDocument();
   });
 
   it('deve aplicar className customizada', () => {

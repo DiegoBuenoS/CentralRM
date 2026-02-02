@@ -1,18 +1,14 @@
-/**
- * Testes da Página de Login
- * 
- * Testes unitários para a página de login.
- * @file Testes do LoginPage
- */
+// Login page tests
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import LoginPage from './LoginPage';
-import * as apiService from '../services/api.service';
+import * as apiService from '../services/auth.service';
+import { MemoryRouter } from 'react-router-dom';
 
-// Mock do serviço de API
-vi.mock('../services/api.service');
+// API mock
+vi.mock('../services/auth.service');
 
 describe('Página de Login', () => {
   beforeEach(() => {
@@ -20,44 +16,35 @@ describe('Página de Login', () => {
     localStorage.clear();
   });
 
+  const renderWithRouter = () =>
+    render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>
+    );
+
   it('deve renderizar o formulário de login', () => {
-    render(<LoginPage />);
+    renderWithRouter();
     
-    expect(screen.getByText('RM Login')).toBeInTheDocument();
-    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByText('Central de Aprovações')).toBeInTheDocument();
+    expect(screen.getByLabelText('Usuário')).toBeInTheDocument();
     expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
   });
 
-  it('deve validar email obrigatório', async () => {
-    render(<LoginPage />);
+  it('deve validar usuário obrigatório', async () => {
+    renderWithRouter();
     
     const button = screen.getByRole('button', { name: 'Entrar' });
     await userEvent.click(button);
     
-    expect(screen.getByText('Email é obrigatório')).toBeInTheDocument();
-  });
-
-  it('deve validar formato de email', async () => {
-    render(<LoginPage />);
-    
-    const emailInput = screen.getByLabelText('Email');
-    const passwordInput = screen.getByLabelText('Senha');
-    const button = screen.getByRole('button', { name: 'Entrar' });
-    
-    await userEvent.type(emailInput, 'email_invalido');
-    await userEvent.type(passwordInput, 'senha123');
-    await userEvent.click(button);
-    
-    await waitFor(() => {
-      expect(screen.getByText('Email inválido')).toBeInTheDocument();
-    });
+    expect(screen.getByText('Usuário é obrigatório')).toBeInTheDocument();
   });
 
   it('deve validar senha obrigatória', async () => {
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const button = screen.getByRole('button', { name: 'Entrar' });
     
     await userEvent.type(emailInput, 'usuario@email.com');
@@ -67,17 +54,17 @@ describe('Página de Login', () => {
   });
 
   it('deve validar comprimento mínimo da senha', async () => {
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const passwordInput = screen.getByLabelText('Senha');
     const button = screen.getByRole('button', { name: 'Entrar' });
     
     await userEvent.type(emailInput, 'usuario@email.com');
-    await userEvent.type(passwordInput, '123');
+    await userEvent.type(passwordInput, '12');
     await userEvent.click(button);
     
-    expect(screen.getByText('Senha deve ter no mínimo 6 caracteres')).toBeInTheDocument();
+    expect(screen.getByText('Senha deve ter no mínimo 3 caracteres')).toBeInTheDocument();
   });
 
   it('deve fazer login com sucesso', async () => {
@@ -86,9 +73,9 @@ describe('Página de Login', () => {
       refresh_token: 'refresh_token',
     });
 
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const passwordInput = screen.getByLabelText('Senha');
     const button = screen.getByRole('button', { name: 'Entrar' });
     
@@ -105,13 +92,13 @@ describe('Página de Login', () => {
     apiService.loginUser.mockRejectedValue({
       response: {
         status: 401,
-        data: { message: 'Email ou senha incorretos' },
+        data: { message: 'Usuário ou senha incorretos' },
       },
     });
 
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const passwordInput = screen.getByLabelText('Senha');
     const button = screen.getByRole('button', { name: 'Entrar' });
     
@@ -120,7 +107,7 @@ describe('Página de Login', () => {
     await userEvent.click(button);
     
     await waitFor(() => {
-      expect(screen.getByText('Email ou senha incorretos')).toBeInTheDocument();
+      expect(screen.getByText('Usuário ou senha incorretos')).toBeInTheDocument();
     });
   });
 
@@ -129,9 +116,9 @@ describe('Página de Login', () => {
       access_token: 'token_acesso',
     });
 
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const passwordInput = screen.getByLabelText('Senha');
     const rememberCheckbox = screen.getByRole('checkbox', { name: /Lembrar-me/ });
     const button = screen.getByRole('button', { name: 'Entrar' });
@@ -154,9 +141,9 @@ describe('Página de Login', () => {
       () => new Promise(resolve => setTimeout(resolve, 1000))
     );
 
-    render(<LoginPage />);
+    renderWithRouter();
     
-    const emailInput = screen.getByLabelText('Email');
+    const emailInput = screen.getByLabelText('Usuário');
     const passwordInput = screen.getByLabelText('Senha');
     const button = screen.getByRole('button', { name: 'Entrar' });
     

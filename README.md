@@ -2,14 +2,11 @@
 
 Sistema de autenticação e dashboard para **TOTVS RM** desenvolvido com React, Vite e Tailwind CSS.
 
-<<<<<<< HEAD
 ![React](https://img.shields.io/badge/React-18.x-blue)
 ![Vite](https://img.shields.io/badge/Vite-5.x-purple)
 ![Tailwind](https://img.shields.io/badge/Tailwind-3.x-cyan)
 ![License](https://img.shields.io/badge/License-MIT-green)
-=======
 Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido com React, Tailwind CSS e shadcn/ui.
->>>>>>> 8f9f87e90afc054b991dd6ae8c9dc88464e514ba
 
 ---
 
@@ -22,6 +19,7 @@ Sistema moderno de autenticação integrado com a API do TOTVS RM. Desenvolvido 
 - [Instalação](#instalação)
 - [Configuração](#configuração)
 - [Uso](#uso)
+- [Estrutura de APIs](#estrutura-de-apis)
 - [Estrutura do Projeto](#estrutura-do-projeto)
 - [Capturas de Tela](#capturas-de-tela)
 - [Roadmap](#roadmap)
@@ -186,8 +184,54 @@ Acesse: http://localhost:5173
 O sistema utiliza os seguintes endpoints do TOTVS RM:
 
 - `GET /api/framework/v1/users/{username}` - Autenticação e dados do usuário
+- `GET /api/framework/v1/consultaSQLServer/RealizaConsulta/{codSentenca}/{codColigada}/{codSistema}/?PARAMETERS=...` - Execução de sentenças SQL cadastradas
 
 Para mais informações, consulte a [documentação oficial do TOTVS RM](https://tdn.totvs.com/pages/releaseview.action?pageId=419548959).
+
+---
+
+## 🔌 Estrutura de APIs
+
+### Config centralizada
+
+Todas as configurações das chamadas ficam em:
+
+- `src/config/api.config.js` → seção `CONSULTA_SQL` + `BASE_URL` + `AUTH`
+
+Pontos principais:
+
+- `CONSULTA_SQL.BASE_PATH` → caminho da consulta SQL
+- `CONSULTA_SQL.COD_COLIGADA_PATH` → coligada na URL
+- `CONSULTA_SQL.COD_SISTEMA` → sistema
+- `CONSULTA_SQL.COD_COLIGADA_PARAM` → coligada enviada nos parâmetros
+- `CONSULTA_SQL.SENTENCAS` → códigos das sentenças (ex.: `INT.001`, `INT.002`)
+- `CONSULTA_SQL.PARAMS` → nomes dos parâmetros (`usuario`, `codcoligada`)
+
+### Serviços (boa prática)
+
+Camadas separadas por responsabilidade:
+
+- `src/services/apiClient.js` → client HTTP + interceptors
+- `src/services/auth.service.js` → login, logout, getUserInfo
+- `src/services/consultaSql.service.js` → build/get da ConsultaSQL
+- `src/services/index.js` → exports centralizados
+
+### Exemplo de ConsultaSQL
+
+Formato que o RM espera:
+
+```
+.../RealizaConsulta/INT.001/0/G/?PARAMETERS=usuario=mestre;codcoligada=1
+```
+
+No front, o helper monta a URL com base no `API_CONFIG.CONSULTA_SQL`.
+
+### Observações importantes
+
+- O parâmetro `PARAMETERS` é sensível ao formato (maiusculo) e ao encoding.
+- Para ambiente local com CORS bloqueado, use o proxy do Vite:
+  - `vite.config.js` → `server.proxy['/api']`
+- Em produção, é necessário liberar CORS na API ou usar um proxy backend.
 
 ---
 
