@@ -153,4 +153,16 @@ Consulte os novos arquivos de documentação:
 
 ---
 
-**Projeto agora com testes e automação! 🎉**
+**Projeto agora com testes e automação!**
+
+## Padrões de Grid e Filtros
+
+Sempre que um grid/tabela for criado, utilize o componente `DataTable` (padrão Chdcn/TanStack).
+
+Arquivos:
+- `src/components/ui/data-table.jsx`
+
+Uso típico:
+- Defina `columns` (com `key`, `label` e opcional `cell`, `accessor`, `filterMode`, `headerClassName`, `cellClassName`)
+- Renderize o `DataTable` passando `columns` e `data`
+- Os filtros por coluna são automáticos e já trazem seleção quando há poucas opções

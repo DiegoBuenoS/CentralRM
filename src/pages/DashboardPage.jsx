@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import { SidebarProvider, useSidebar } from '../components/ui/sidebar';
 import { logoutUser, isAuthenticated, getConsultaSql } from '../services';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -36,32 +37,71 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popover';
 import { Calendar } from '../components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../components/ui/table';
+import { DataTable } from '../components/ui/data-table';
 import API_CONFIG from '../config/api.config';
 import {
-  TrendingUp,
-  TrendingDown,
-  Paperclip,
-  Clock,
-  CheckCircle2,
-  MoreVertical,
-  SlidersHorizontal,
-  ArrowUpDown,
-  Trash2,
-  Circle,
-  Info,
-  Check,
-  X,
-  Calendar as CalendarIcon,
-  ShoppingCart,
-  FileText,
-  Users,
-  ChevronDown,
-} from 'lucide-react';
+  ArrowTrendingUpIcon,
+  ArrowTrendingDownIcon,
+  PaperClipIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  EllipsisVerticalIcon,
+  AdjustmentsHorizontalIcon,
+  ArrowsUpDownIcon,
+  TrashIcon,
+  InformationCircleIcon,
+  CheckIcon,
+  XMarkIcon,
+  CalendarIcon,
+  ShoppingCartIcon,
+  DocumentTextIcon,
+  UsersIcon,
+  ChevronDownIcon,
+} from '@heroicons/react/24/outline';
+
+const DashboardLayout = ({
+  user,
+  activeCover,
+  currentPage,
+  onLogout,
+  onNavigate,
+  children,
+  dialog,
+}) => {
+  const { collapsed } = useSidebar();
+
+  return (
+    <div className="min-h-screen bg-mist dark:bg-graphite-900">
+      <Sidebar
+        onLogout={onLogout}
+        currentPage={currentPage}
+        onNavigate={onNavigate}
+      />
+
+      <Header
+        user={user}
+        sidebarCollapsed={collapsed}
+        title={activeCover.title}
+        breadcrumb={['Início', activeCover.title]}
+      />
+
+      <main
+        className={`
+          ${collapsed ? 'ml-20' : 'ml-64'}
+          mt-20
+          p-6
+          transition-all duration-300
+        `}
+      >
+        {children}
+      </main>
+      {dialog}
+    </div>
+  );
+};
 
 const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const navigate = useNavigate();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [user, setUser] = useState(null);
   const [taskTab, setTaskTab] = useState('itens');
@@ -244,7 +284,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       value: '18',
       change: '+4',
       trend: 'up',
-      icon: ShoppingCart,
+      icon: ShoppingCartIcon,
       color: 'accent',
     },
     {
@@ -252,7 +292,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       value: '7',
       change: '+1',
       trend: 'up',
-      icon: FileText,
+      icon: DocumentTextIcon,
       color: 'graphite-light',
     },
     {
@@ -260,7 +300,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       value: '12',
       change: '-2',
       trend: 'down',
-      icon: Users,
+      icon: UsersIcon,
       color: 'accent-soft',
     },
     {
@@ -268,7 +308,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       value: '5',
       change: '+2',
       trend: 'up',
-      icon: ShoppingCart,
+      icon: ShoppingCartIcon,
       color: 'accent',
     },
   ];
@@ -508,6 +548,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const [pedidoSelecionado, setPedidoSelecionado] = useState(pedidosData[0]);
   const [itemSelecionado, setItemSelecionado] = useState(pedidosData[0].itens[0].sku);
   const [itemSearch, setItemSearch] = useState('');
+  const [pedidosTableCount, setPedidosTableCount] = useState(pedidosData.length);
+  const [itensTableCount, setItensTableCount] = useState(pedidosData[0]?.itens?.length || 0);
   const [showRequestCard, setShowRequestCard] = useState(false);
   const [requestMeta, setRequestMeta] = useState({
     tipoSolicitacao: '1.1.04',
@@ -529,6 +571,9 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const [requestCentroOptions, setRequestCentroOptions] = useState([]);
   const [requestCentroLoading, setRequestCentroLoading] = useState(false);
   const [requestCentroError, setRequestCentroError] = useState('');
+  const [requestLookupsLoaded, setRequestLookupsLoaded] = useState(false);
+  const requestLookupsInFlight = React.useRef(null);
+  const requestLookupsLoading = requestTipoLoading || requestCentroLoading;
   const [requestSaved, setRequestSaved] = useState(false);
   const [requestProgress, setRequestProgress] = useState(0);
   const [requestSaving, setRequestSaving] = useState(false);
@@ -538,6 +583,13 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const [approvalProgress, setApprovalProgress] = useState(0);
   const [approvalResult, setApprovalResult] = useState('');
   const [approvalInfoId, setApprovalInfoId] = useState(null);
+  const normalizePage = (page) => {
+    if (!page) return 'dashboard';
+    if (page.startsWith('dashboard-')) return 'dashboard';
+    if (page.startsWith('pedidos-')) return 'pedidos';
+    return page;
+  };
+  const normalizedPage = normalizePage(currentPage);
   const requestItemCatalog = [
     { codigo: '02.01.0001', descricao: 'Servico Fornecimento de Agua/Esgoto', tipo: 'Servico', unidade: 'SV' },
     { codigo: '02.01.0002', descricao: 'Servico de Fornecimento de Telecomunicacao', tipo: 'Servico', unidade: 'SV' },
@@ -562,10 +614,10 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   }, [pedidoSelecionado]);
 
   useEffect(() => {
-    if (currentPage === 'tarefas' && !approvalSelected) {
+    if (normalizedPage === 'tarefas' && !approvalSelected) {
       setApprovalSelected(approvalPedidos[0]);
     }
-  }, [currentPage, approvalSelected]);
+  }, [normalizedPage, approvalSelected]);
 
   const pedidosFiltrados = pedidosData
     .filter((pedido) => {
@@ -591,6 +643,117 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     );
   });
 
+  useEffect(() => {
+    setPedidosTableCount(pedidosFiltrados.length);
+  }, [pedidosFiltrados.length]);
+
+  useEffect(() => {
+    setItensTableCount(itensFiltrados.length);
+  }, [itensFiltrados.length]);
+
+  const loadRequestLookups = React.useCallback(() => {
+    if (requestLookupsLoaded) {
+      return Promise.resolve();
+    }
+    if (requestLookupsInFlight.current) {
+      return requestLookupsInFlight.current;
+    }
+
+    setRequestTipoError('');
+    setRequestCentroError('');
+    setRequestTipoLoading(true);
+    setRequestCentroLoading(true);
+
+    const loginUsuario = localStorage.getItem('username') || user?.username || '';
+    const parameters = `${API_CONFIG.CONSULTA_SQL.PARAMS.USUARIO}=${loginUsuario};${API_CONFIG.CONSULTA_SQL.PARAMS.CODCOLIGADA}=${API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PARAM}`;
+
+    const tipoPromise = getConsultaSql({
+      codSentenca: API_CONFIG.CONSULTA_SQL.SENTENCAS.TIPO_SOLICITACAO,
+      codColigada: API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PATH,
+      codSistema: API_CONFIG.CONSULTA_SQL.COD_SISTEMA,
+      parameters,
+      useUppercaseParameters: API_CONFIG.CONSULTA_SQL.USE_UPPERCASE_PARAMS,
+      encodeQuery: API_CONFIG.CONSULTA_SQL.ENCODE_QUERY,
+      basePath: API_CONFIG.CONSULTA_SQL.BASE_PATH,
+    });
+
+    const centroPromise = getConsultaSql({
+      codSentenca: API_CONFIG.CONSULTA_SQL.SENTENCAS.CENTRO_CUSTO,
+      codColigada: API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PATH,
+      codSistema: API_CONFIG.CONSULTA_SQL.COD_SISTEMA,
+      parameters,
+      useUppercaseParameters: API_CONFIG.CONSULTA_SQL.USE_UPPERCASE_PARAMS,
+      encodeQuery: API_CONFIG.CONSULTA_SQL.ENCODE_QUERY,
+      basePath: API_CONFIG.CONSULTA_SQL.BASE_PATH,
+    });
+
+    const normalizeSqlRows = (result) => {
+      if (Array.isArray(result)) return result;
+      if (Array.isArray(result?.data)) return result.data;
+      if (Array.isArray(result?.values)) return result.values;
+      if (Array.isArray(result?.items)) return result.items;
+      return [];
+    };
+
+    requestLookupsInFlight.current = Promise.allSettled([tipoPromise, centroPromise])
+      .then(([tipoResult, centroResult]) => {
+        if (tipoResult.status === 'fulfilled') {
+          const rows = normalizeSqlRows(tipoResult.value);
+          const mapped = rows
+            .map((row) => ({
+              codigo: row?.CODTMV ?? row?.codtmv ?? row?.Codigo ?? row?.codigo ?? '',
+              nome: row?.NOME ?? row?.nome ?? row?.Nome ?? row?.descricao ?? '',
+            }))
+            .filter((row) => row.codigo);
+
+          setRequestTipoOptions(mapped);
+          setRequestMeta((prev) => ({
+            ...prev,
+            tipoSolicitacao: mapped.some((opt) => opt.codigo === prev.tipoSolicitacao)
+              ? prev.tipoSolicitacao
+              : mapped[0]?.codigo || prev.tipoSolicitacao,
+          }));
+        } else {
+          setRequestTipoError('Não foi possível carregar o tipo de solicitação.');
+          if (API_CONFIG.GENERAL.DEBUG) {
+            console.error('Erro ao carregar tipo de solicitação:', tipoResult.reason);
+          }
+        }
+
+        if (centroResult.status === 'fulfilled') {
+          const rows = normalizeSqlRows(centroResult.value);
+          const mapped = rows
+            .map((row) => ({
+              codigo: row?.CODCCUSTO ?? row?.codccusto ?? '',
+              nome: row?.NOME ?? row?.nome ?? '',
+            }))
+            .filter((row) => row.codigo);
+
+          setRequestCentroOptions(mapped);
+          setRequestMeta((prev) => ({
+            ...prev,
+            centroCusto: mapped.some((opt) => opt.codigo === prev.centroCusto)
+              ? prev.centroCusto
+              : mapped[0]?.codigo || prev.centroCusto,
+          }));
+        } else {
+          setRequestCentroError('Não foi possível carregar o centro de custo.');
+          if (API_CONFIG.GENERAL.DEBUG) {
+            console.error('Erro ao carregar centro de custo:', centroResult.reason);
+          }
+        }
+
+        setRequestLookupsLoaded(true);
+      })
+      .finally(() => {
+        setRequestTipoLoading(false);
+        setRequestCentroLoading(false);
+        requestLookupsInFlight.current = null;
+      });
+
+    return requestLookupsInFlight.current;
+  }, [requestLookupsLoaded, user]);
+
   const handleOpenRequest = async () => {
     const now = new Date();
     const dataHora = now.toLocaleString('pt-BR');
@@ -598,105 +761,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     setRequestStamp({ dataHora, usuario: usuarioExibicao });
     setRequestSaved(false);
     setRequestDates({ emissao: null, necessidade: null });
-    setRequestTipoError('');
-    setRequestTipoLoading(true);
-    setRequestCentroError('');
-    setRequestCentroLoading(true);
     setShowRequestCard(true);
-
-    try {
-      const loginUsuario = localStorage.getItem('username') || user?.username || '';
-      const parameters = `${API_CONFIG.CONSULTA_SQL.PARAMS.USUARIO}=${loginUsuario};${API_CONFIG.CONSULTA_SQL.PARAMS.CODCOLIGADA}=${API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PARAM}`;
-      const result = await getConsultaSql({
-        codSentenca: API_CONFIG.CONSULTA_SQL.SENTENCAS.TIPO_SOLICITACAO,
-        codColigada: API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PATH,
-        codSistema: API_CONFIG.CONSULTA_SQL.COD_SISTEMA,
-        parameters,
-        useUppercaseParameters: API_CONFIG.CONSULTA_SQL.USE_UPPERCASE_PARAMS,
-        encodeQuery: API_CONFIG.CONSULTA_SQL.ENCODE_QUERY,
-        basePath: API_CONFIG.CONSULTA_SQL.BASE_PATH,
-      });
-
-      const rows = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.data)
-          ? result.data
-          : Array.isArray(result?.values)
-            ? result.values
-            : Array.isArray(result?.items)
-              ? result.items
-              : [];
-
-      const mapped = rows
-        .map((row) => ({
-          codigo: row?.CODTMV ?? row?.codtmv ?? row?.Codigo ?? row?.codigo ?? '',
-          nome: row?.NOME ?? row?.nome ?? row?.Nome ?? row?.descricao ?? '',
-        }))
-        .filter((row) => row.codigo);
-
-      setRequestTipoOptions(mapped);
-
-      if (mapped.length > 0) {
-        setRequestMeta((prev) => ({
-          ...prev,
-          tipoSolicitacao: mapped[0].codigo,
-        }));
-      }
-    } catch (error) {
-      setRequestTipoError('Não foi possível carregar o tipo de solicitação.');
-      if (API_CONFIG.GENERAL.DEBUG) {
-        console.error('Erro ao carregar tipo de solicitação:', error);
-      }
-    } finally {
-      setRequestTipoLoading(false);
-    }
-
-    try {
-      const loginUsuario = localStorage.getItem('username') || user?.username || '';
-      const parameters = `${API_CONFIG.CONSULTA_SQL.PARAMS.USUARIO}=${loginUsuario};${API_CONFIG.CONSULTA_SQL.PARAMS.CODCOLIGADA}=${API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PARAM}`;
-      const result = await getConsultaSql({
-        codSentenca: API_CONFIG.CONSULTA_SQL.SENTENCAS.CENTRO_CUSTO,
-        codColigada: API_CONFIG.CONSULTA_SQL.COD_COLIGADA_PATH,
-        codSistema: API_CONFIG.CONSULTA_SQL.COD_SISTEMA,
-        parameters,
-        useUppercaseParameters: API_CONFIG.CONSULTA_SQL.USE_UPPERCASE_PARAMS,
-        encodeQuery: API_CONFIG.CONSULTA_SQL.ENCODE_QUERY,
-        basePath: API_CONFIG.CONSULTA_SQL.BASE_PATH,
-      });
-
-      const rows = Array.isArray(result)
-        ? result
-        : Array.isArray(result?.data)
-          ? result.data
-          : Array.isArray(result?.values)
-            ? result.values
-            : Array.isArray(result?.items)
-              ? result.items
-              : [];
-
-      const mapped = rows
-        .map((row) => ({
-          codigo: row?.CODCCUSTO ?? row?.codccusto ?? '',
-          nome: row?.NOME ?? row?.nome ?? '',
-        }))
-        .filter((row) => row.codigo);
-
-      setRequestCentroOptions(mapped);
-
-      if (mapped.length > 0) {
-        setRequestMeta((prev) => ({
-          ...prev,
-          centroCusto: mapped[0].codigo,
-        }));
-      }
-    } catch (error) {
-      setRequestCentroError('Não foi possível carregar o centro de custo.');
-      if (API_CONFIG.GENERAL.DEBUG) {
-        console.error('Erro ao carregar centro de custo:', error);
-      }
-    } finally {
-      setRequestCentroLoading(false);
-    }
+    loadRequestLookups();
   };
 
   const handleAddItem = () => {
@@ -800,7 +866,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       owner: 'Controladoria',
     },
     tarefas: {
-      title: 'Central de Tarefas',
+      title: 'Tarefas e Aprovações',
       description: 'Acompanhamento de aprovações e pendências.',
       status: 'Em análise',
       owner: 'Financeiro',
@@ -829,25 +895,381 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       status: 'Restrito',
       owner: 'TI',
     },
+    cadastros: {
+      title: 'Cadastros',
+      description: 'Base corporativa de dados.',
+      status: 'Em revisão',
+      owner: 'Controladoria',
+    },
+    'cadastros-estoque': {
+      title: 'Cadastros - Estoque',
+      description: 'Catálogo de produtos e locais.',
+      status: 'Ativo',
+      owner: 'Supply',
+    },
+    'cadastros-estoque-produtos': {
+      title: 'Produtos',
+      description: 'Cadastro e manutenção de itens.',
+      status: 'Ativo',
+      owner: 'Supply',
+    },
+    'cadastros-estoque-local': {
+      title: 'Local de estoque',
+      description: 'Endereços e depósitos.',
+      status: 'Ativo',
+      owner: 'Supply',
+    },
+    'cadastros-financeiro': {
+      title: 'Cadastros - Financeiro',
+      description: 'Clientes, fornecedores e contas.',
+      status: 'Ativo',
+      owner: 'Financeiro',
+    },
+    'cadastros-financeiro-clientes': {
+      title: 'Cliente e Fornecedor',
+      description: 'Cadastro financeiro consolidado.',
+      status: 'Ativo',
+      owner: 'Financeiro',
+    },
+    'cadastros-financeiro-contas': {
+      title: 'Contas Caixa',
+      description: 'Contas e centros financeiros.',
+      status: 'Ativo',
+      owner: 'Financeiro',
+    },
+    'cadastros-est-compras-fat': {
+      title: 'Est. Compras e Fat.',
+      description: 'Parâmetros de compras e faturamento.',
+      status: 'Em revisão',
+      owner: 'Compras',
+    },
+    'cadastros-globais': {
+      title: 'Globais',
+      description: 'Parâmetros globais do sistema.',
+      status: 'Restrito',
+      owner: 'TI',
+    },
   };
 
-  const activeCover = coverByPage[currentPage] || coverByPage.dashboard;
+  const activeCover = coverByPage[normalizedPage] || coverByPage.dashboard;
+
+  const cadastrosOverviewCards = [
+    {
+      id: 'cadastros-estoque',
+      title: 'Estoque',
+      description: 'Produtos, locais e endereços.',
+      path: '/cadastros/estoque',
+    },
+    {
+      id: 'cadastros-financeiro',
+      title: 'Financeiro',
+      description: 'Clientes, fornecedores e contas.',
+      path: '/cadastros/financeiro',
+    },
+    {
+      id: 'cadastros-est-compras-fat',
+      title: 'Est. Compras e Fat.',
+      description: 'Parâmetros de compras e faturamento.',
+      path: '/cadastros/est-compras-fat',
+    },
+    {
+      id: 'cadastros-globais',
+      title: 'Globais',
+      description: 'Regras e parâmetros globais.',
+      path: '/cadastros/globais',
+    },
+  ];
+
+  const cadastrosEstoqueCards = [
+    {
+      id: 'cadastros-estoque-produtos',
+      title: 'Produtos',
+      description: 'Catálogo e classificação de itens.',
+      path: '/cadastros/estoque/produtos',
+    },
+    {
+      id: 'cadastros-estoque-local',
+      title: 'Local de estoque',
+      description: 'Depósitos e áreas de guarda.',
+      path: '/cadastros/estoque/local',
+    },
+  ];
+
+  const cadastrosFinanceiroCards = [
+    {
+      id: 'cadastros-financeiro-clientes',
+      title: 'Cliente e Fornecedor',
+      description: 'Parceiros financeiros e tributação.',
+      path: '/cadastros/financeiro/clientes',
+    },
+    {
+      id: 'cadastros-financeiro-contas',
+      title: 'Contas Caixa',
+      description: 'Caixas, bancos e conciliações.',
+      path: '/cadastros/financeiro/contas',
+    },
+  ];
+
+  const cadastrosProdutos = [
+    { codigo: 'PRD-001', descricao: 'Notebook Corporativo', categoria: 'Equipamentos', status: 'Ativo' },
+    { codigo: 'PRD-014', descricao: 'Monitor 24"', categoria: 'Periféricos', status: 'Ativo' },
+    { codigo: 'PRD-021', descricao: 'Headset', categoria: 'Periféricos', status: 'Bloqueado' },
+    { codigo: 'PRD-038', descricao: 'Cadeira Escritório', categoria: 'Mobiliário', status: 'Ativo' },
+  ];
+
+  const cadastrosLocais = [
+    { codigo: 'ALM-CENTRAL', descricao: 'Almoxarifado Central', tipo: 'Depósito', responsavel: 'Logística', status: 'Ativo' },
+    { codigo: 'TI-ANDAR-2', descricao: 'TI - Andar 2', tipo: 'Área', responsavel: 'TI', status: 'Ativo' },
+    { codigo: 'FIL-SP-01', descricao: 'Filial São Paulo', tipo: 'Filial', responsavel: 'Operações', status: 'Em revisão' },
+  ];
+
+  const cadastrosClientes = [
+    { nome: 'Grupo Horizonte', tipo: 'Cliente', documento: '12.345.678/0001-90', status: 'Ativo' },
+    { nome: 'Alpha Fornecimentos', tipo: 'Fornecedor', documento: '08.234.567/0001-11', status: 'Ativo' },
+    { nome: 'Lumen Serviços', tipo: 'Fornecedor', documento: '04.987.654/0001-22', status: 'Bloqueado' },
+    { nome: 'Nova Linha', tipo: 'Cliente', documento: '32.456.789/0001-45', status: 'Ativo' },
+  ];
+
+  const cadastrosContas = [
+    { conta: 'Caixa Matriz', banco: 'Itaú', agencia: '0001', status: 'Ativa' },
+    { conta: 'Conta Operacional', banco: 'Bradesco', agencia: '0134', status: 'Ativa' },
+    { conta: 'Caixa Filial SP', banco: 'Santander', agencia: '2450', status: 'Em revisão' },
+  ];
+
+  const notasFiscaisData = [
+    { numero: 'NF-2001', fornecedor: 'Fornecedor XYZ', valor: 'R$ 8.320,00' },
+    { numero: 'NF-2002', fornecedor: 'Alpha Serviços', valor: 'R$ 6.540,00' },
+    { numero: 'NF-2003', fornecedor: 'Nova Linha', valor: 'R$ 12.980,00' },
+  ];
+
+  const relatoriosData = [
+    { relatorio: 'Consolidação 1', periodicidade: 'Mensal', status: 'Atualizado' },
+    { relatorio: 'Consolidação 2', periodicidade: 'Trimestral', status: 'Atualizado' },
+    { relatorio: 'Consolidação 3', periodicidade: 'Anual', status: 'Atualizado' },
+  ];
+
+  const configuracoesData = [
+    { parametro: 'Fluxo de aprovação', valor: 'Ativo', status: 'OK' },
+    { parametro: 'Perfil padrão', valor: 'Ativo', status: 'OK' },
+    { parametro: 'Integração', valor: 'Ativo', status: 'OK' },
+  ];
+
+  const renderCadastrosCards = (cards) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+      {cards.map((card) => (
+        <Card key={card.id} className="border-graphite-200">
+          <CardHeader className="space-y-2">
+            <CardTitle className="text-lg text-graphite-900">{card.title}</CardTitle>
+            <CardDescription className="text-graphite-500">
+              {card.description}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-between">
+            <span className="text-xs text-graphite-500">Atualizado recentemente</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleNavigate({ id: card.id, path: card.path })}
+            >
+              Acessar
+            </Button>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+
+  const renderCadastrosTable = ({ title, description, columns, rows }) => (
+    <Card className="border-graphite-200">
+      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <CardTitle className="text-lg text-graphite-900">{title}</CardTitle>
+          <CardDescription className="text-graphite-500">{description}</CardDescription>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" size="sm">Exportar</Button>
+          <Button variant="default" size="sm">Novo</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <DataTable columns={columns} data={rows} />
+      </CardContent>
+    </Card>
+  );
+
+  const renderCadastrosPage = (pageId) => {
+    if (pageId === 'cadastros') {
+      return renderCadastrosCards(cadastrosOverviewCards);
+    }
+    if (pageId === 'cadastros-estoque') {
+      return renderCadastrosCards(cadastrosEstoqueCards);
+    }
+    if (pageId === 'cadastros-financeiro') {
+      return renderCadastrosCards(cadastrosFinanceiroCards);
+    }
+    if (pageId === 'cadastros-estoque-produtos') {
+      return renderCadastrosTable({
+        title: 'Produtos',
+        description: 'Catálogo de itens ativos e bloqueados.',
+        columns: [
+          { key: 'codigo', label: 'Código' },
+          { key: 'descricao', label: 'Descrição' },
+          { key: 'categoria', label: 'Categoria' },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                {row.status}
+              </Badge>
+            ),
+          },
+        ],
+        rows: cadastrosProdutos,
+      });
+    }
+    if (pageId === 'cadastros-estoque-local') {
+      return renderCadastrosTable({
+        title: 'Local de estoque',
+        description: 'Depósitos e áreas de guarda.',
+        columns: [
+          { key: 'codigo', label: 'Código' },
+          { key: 'descricao', label: 'Descrição' },
+          { key: 'tipo', label: 'Tipo' },
+          { key: 'responsavel', label: 'Responsável' },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                {row.status}
+              </Badge>
+            ),
+          },
+        ],
+        rows: cadastrosLocais,
+      });
+    }
+    if (pageId === 'cadastros-financeiro-clientes') {
+      return renderCadastrosTable({
+        title: 'Cliente e Fornecedor',
+        description: 'Cadastro de parceiros financeiros.',
+        columns: [
+          { key: 'nome', label: 'Nome' },
+          { key: 'tipo', label: 'Tipo' },
+          { key: 'documento', label: 'Documento' },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                {row.status}
+              </Badge>
+            ),
+          },
+        ],
+        rows: cadastrosClientes,
+      });
+    }
+    if (pageId === 'cadastros-financeiro-contas') {
+      return renderCadastrosTable({
+        title: 'Contas Caixa',
+        description: 'Contas bancárias e caixas.',
+        columns: [
+          { key: 'conta', label: 'Conta' },
+          { key: 'banco', label: 'Banco' },
+          { key: 'agencia', label: 'Agência' },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                {row.status}
+              </Badge>
+            ),
+          },
+        ],
+        rows: cadastrosContas,
+      });
+    }
+    if (pageId === 'cadastros-est-compras-fat') {
+      return (
+        <Card className="border-graphite-200">
+          <CardHeader>
+            <CardTitle className="text-lg text-graphite-900">Est. Compras e Fat.</CardTitle>
+            <CardDescription className="text-graphite-500">
+              Parâmetros operacionais para compras e faturamento.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-graphite-600">
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Fluxo de aprovação padrão</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Ativo</Badge>
+            </div>
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Integração fiscal automática</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Ativo</Badge>
+            </div>
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Política de descontos</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Em revisão</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    if (pageId === 'cadastros-globais') {
+      return (
+        <Card className="border-graphite-200">
+          <CardHeader>
+            <CardTitle className="text-lg text-graphite-900">Globais</CardTitle>
+            <CardDescription className="text-graphite-500">
+              Parâmetros globais e integrações corporativas.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-graphite-600">
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Ambiente fiscal</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Produção</Badge>
+            </div>
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Integração bancária</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Ativa</Badge>
+            </div>
+            <div className="flex items-center justify-between border border-graphite-200 rounded-md p-3">
+              <span>Regra de centro de custo</span>
+              <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">Controlada</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
+    return null;
+  };
 
   // Render
   const renderContent = () => {
-    switch (currentPage) {
+    if (normalizedPage.startsWith('cadastros')) {
+      return renderCadastrosPage(normalizedPage);
+    }
+
+    switch (normalizedPage) {
       case 'dashboard':
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {statsCards.map((card, index) => {
                 const Icon = card.icon;
-                const TrendIcon = card.trend === 'up' ? TrendingUp : TrendingDown;
+                const TrendIcon = card.trend === 'up' ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
                 const colorClasses = {
-                  graphite: 'bg-graphite-900',
-                  accent: 'bg-accent-600',
-                  'graphite-light': 'bg-graphite-700',
-                  'accent-soft': 'bg-accent-500',
+                  graphite: 'bg-graphite-900 dark:bg-white',
+                  accent: 'bg-black dark:bg-white',
+                  'graphite-light': 'bg-graphite-700 dark:bg-graphite-300',
+                  'accent-soft': 'bg-graphite-800 dark:bg-graphite-200',
                 };
 
                 return (
@@ -859,11 +1281,11 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     <div className="flex items-center justify-between mb-4">
                       <div className={`p-2.5 rounded-md ${colorClasses[card.color]}`}>
                         {card.iconLabel ? (
-                          <span className="text-white text-sm font-semibold">
+                          <span className="text-white text-sm font-semibold dark:text-black">
                             {card.iconLabel}
                           </span>
                         ) : (
-                          <Icon size={24} className="text-white" />
+                          <Icon className="h-6 w-6 text-white dark:text-black" />
                         )}
                       </div>
                       <div
@@ -874,7 +1296,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                       : 'text-red-500'
                                   }`}
                       >
-                        <TrendIcon size={16} />
+                        <TrendIcon className="h-4 w-4" />
                         <span>{card.change}</span>
                       </div>
                     </div>
@@ -938,7 +1360,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       <div className="w-32">
                         <div className="w-full bg-graphite-100 rounded-full h-2">
                           <div
-                            className="bg-accent-500 h-2 rounded-full"
+                            className="bg-black dark:bg-white h-2 rounded-full"
                             style={{ width: `${(product.qty / 145) * 100}%` }}
                           ></div>
                         </div>
@@ -956,7 +1378,108 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
           </div>
         );
 
-      case 'tarefas':
+      case 'tarefas': {
+        const approvalColumns = [
+          {
+            key: 'id',
+            label: 'Pedido',
+            cell: (row) => <span className="font-medium">{row.id}</span>,
+          },
+          {
+            key: 'fornecedor',
+            label: 'Fornecedor',
+            cell: (row) => <span className="text-graphite-500">{row.fornecedor}</span>,
+          },
+          {
+            key: 'centro',
+            label: 'Centro de Custo',
+            cell: (row) => <span className="text-graphite-500">{row.centro}</span>,
+          },
+          {
+            key: 'criadoPor',
+            label: 'Criado por',
+            cell: (row) => <span className="text-graphite-500">{row.criadoPor}</span>,
+          },
+          {
+            key: 'valor',
+            label: 'Valor',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+            cell: (row) => <span className="font-medium">{row.valor}</span>,
+          },
+          {
+            key: 'aprovacao',
+            label: 'Status da Aprovação',
+            filterMode: 'select',
+            accessor: (row) => approvalStatusMap[row.aprovacao] || row.aprovacao,
+            cell: (row) => {
+              const approvalLabel = approvalStatusMap[row.aprovacao] || row.aprovacao;
+              return (
+                <div className="relative inline-flex items-center gap-2">
+                  <span
+                    className={`px-2.5 py-1 rounded-full border text-xs inline-flex items-center gap-2 ${
+                      row.aprovacao === 'aprovado'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                        : row.aprovacao === 'reprovado'
+                        ? 'border-red-200 bg-red-50 text-red-700'
+                        : 'border-amber-200 bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {approvalLabel}
+                  </span>
+                  {(row.aprovacao === 'aprovado' || row.aprovacao === 'reprovado') && (
+                    <div
+                      className="relative"
+                      onMouseEnter={(e) => {
+                        e.stopPropagation();
+                        setApprovalInfoId(row.id);
+                      }}
+                      onMouseLeave={(e) => {
+                        e.stopPropagation();
+                        setApprovalInfoId(null);
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-md border border-graphite-200 text-graphite-500 hover:text-graphite-900 hover:bg-graphite-50"
+                        title="Informações da aprovação"
+                      >
+                        <InformationCircleIcon className="h-4 w-4" />
+                      </button>
+                      {approvalInfoId === row.id && (
+                        <div className="absolute right-0 top-8 z-50 w-56 text-xs font-mono border border-graphite-300 rounded-md bg-white px-2 py-2 text-graphite-800 shadow-lg">
+                          {row.aprovacao === 'aprovado' ? (
+                            <>
+                              <div className="text-graphite-500">Aprovado por</div>
+                              <div className="mb-1">{row.aprovadoPor || '—'}</div>
+                              <div className="text-graphite-500">Data / Hora</div>
+                              <div>{row.aprovadoEm || '—'}</div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-graphite-500">Reprovado por</div>
+                              <div className="mb-1">{row.reprovadoPor || '—'}</div>
+                              <div className="text-graphite-500">Data / Hora</div>
+                              <div>{row.reprovadoEm || '—'}</div>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            },
+          },
+        ];
+        const approvalItemsColumns = [
+          { key: 'item', label: 'Item' },
+          { key: 'qtd', label: 'Qtde.', headerClassName: 'text-right', cellClassName: 'text-right' },
+          { key: 'un', label: 'UN', headerClassName: 'text-right', cellClassName: 'text-right' },
+          { key: 'unit', label: 'Valor Unitário', headerClassName: 'text-right', cellClassName: 'text-right' },
+        ];
+
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-graphite-200 p-6">
@@ -977,96 +1500,26 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   <TabsTrigger value="aprovacao">Aprovação</TabsTrigger>
                 </TabsList>
                 <TabsContent value="itens">
-                  <div className="mt-4 border border-graphite-200 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Pedido</TableHead>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Centro de Custo</TableHead>
-                          <TableHead>Criado por</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Status da Aprovação</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {approvalPedidos.map((pedido) => (
-                          <TableRow
-                            key={pedido.id}
-                            onClick={() => {
-                              setApprovalSelected(pedido);
-                              setApprovalResult('');
-                              setApprovalProgress(0);
-                              setApprovalProcessing(false);
-                              setApprovalInfoId(null);
-                            }}
-                            className={`cursor-pointer ${
-                              approvalSelected?.id === pedido.id ? 'bg-accent-50' : 'hover:bg-graphite-50'
-                            }`}
-                          >
-                            <TableCell className="font-medium">{pedido.id}</TableCell>
-                            <TableCell className="text-graphite-500">{pedido.fornecedor}</TableCell>
-                            <TableCell className="text-graphite-500">{pedido.centro}</TableCell>
-                            <TableCell className="text-graphite-500">{pedido.criadoPor}</TableCell>
-                            <TableCell className="text-right font-medium">{pedido.valor}</TableCell>
-                            <TableCell>
-                              <div className="relative inline-flex items-center gap-2">
-                                <span
-                                  className={`px-2.5 py-1 rounded-full border text-xs inline-flex items-center gap-2 ${
-                                    pedido.aprovacao === 'aprovado'
-                                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                      : pedido.aprovacao === 'reprovado'
-                                      ? 'border-red-200 bg-red-50 text-red-700'
-                                      : 'border-amber-200 bg-amber-50 text-amber-700'
-                                  }`}
-                                >
-                                  {approvalStatusMap[pedido.aprovacao]}
-                                </span>
-                                {(pedido.aprovacao === 'aprovado' || pedido.aprovacao === 'reprovado') && (
-                                  <div
-                                    className="relative"
-                                    onMouseEnter={(e) => {
-                                      e.stopPropagation();
-                                      setApprovalInfoId(pedido.id);
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.stopPropagation();
-                                      setApprovalInfoId(null);
-                                    }}
-                                  >
-                                    <button
-                                      className="p-1.5 rounded-md border border-graphite-200 text-graphite-500 hover:text-graphite-900 hover:bg-graphite-50"
-                                      title="Informações da aprovação"
-                                    >
-                                      <Info size={14} />
-                                    </button>
-                                    {approvalInfoId === pedido.id && (
-                                      <div className="absolute right-0 top-8 z-50 w-56 text-xs font-mono border border-graphite-300 rounded-md bg-white px-2 py-2 text-graphite-800 shadow-lg">
-                                        {pedido.aprovacao === 'aprovado' ? (
-                                          <>
-                                            <div className="text-graphite-500">Aprovado por</div>
-                                            <div className="mb-1">{pedido.aprovadoPor || '—'}</div>
-                                            <div className="text-graphite-500">Data / Hora</div>
-                                            <div>{pedido.aprovadoEm || '—'}</div>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <div className="text-graphite-500">Reprovado por</div>
-                                            <div className="mb-1">{pedido.reprovadoPor || '—'}</div>
-                                            <div className="text-graphite-500">Data / Hora</div>
-                                            <div>{pedido.reprovadoEm || '—'}</div>
-                                          </>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="mt-4">
+                    <DataTable
+                      columns={approvalColumns}
+                      data={approvalPedidos}
+                      onRowClick={(pedido) => {
+                        setApprovalSelected(pedido);
+                        setApprovalResult('');
+                        setApprovalProgress(0);
+                        setApprovalProcessing(false);
+                        setApprovalInfoId(null);
+                      }}
+                      getRowClassName={(pedido) =>
+                        `cursor-pointer ${
+                          approvalSelected?.id === pedido.id
+                            ? 'bg-graphite-50 dark:bg-graphite-800'
+                            : 'hover:bg-graphite-50'
+                        }`
+                      }
+                      emptyMessage="Nenhum pedido para os filtros selecionados."
+                    />
                   </div>
                   <div className="mt-4 border border-graphite-300 rounded-md p-4 font-mono">
                     <div className="flex items-center justify-between">
@@ -1077,10 +1530,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         </h4>
                       </div>
                       <div className="text-xs flex items-center gap-2">
-                        <Circle
-                          size={14}
-                          className={approvalColorMap[approvalSelected?.aprovacao] || 'text-graphite-400'}
-                          fill="currentColor"
+                        <span
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            approvalColorMap[approvalSelected?.aprovacao]
+                              ? approvalColorMap[approvalSelected?.aprovacao].replace('text-', 'bg-')
+                              : 'bg-graphite-400'
+                          }`}
                         />
                         <span className={approvalColorMap[approvalSelected?.aprovacao] || 'text-graphite-500'}>
                           {approvalStatusMap[approvalSelected?.aprovacao] || '—'}
@@ -1095,27 +1550,13 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       <p className="text-xs uppercase text-graphite-500 mb-1">Observação</p>
                       <p>{approvalSelected?.observacao || '—'}</p>
                     </div>
-                    <div className="mt-3 border border-graphite-300 rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="font-semibold">Item</TableHead>
-                            <TableHead className="text-right font-semibold">Qtde.</TableHead>
-                            <TableHead className="text-right font-semibold">UN</TableHead>
-                            <TableHead className="text-right font-semibold">Valor Unitário</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {(approvalSelected?.itens || []).map((linha) => (
-                            <TableRow key={linha.item}>
-                              <TableCell>{linha.item}</TableCell>
-                              <TableCell className="text-right">{linha.qtd}</TableCell>
-                              <TableCell className="text-right">{linha.un}</TableCell>
-                              <TableCell className="text-right">{linha.unit}</TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
+                    <div className="mt-3">
+                      <DataTable
+                        columns={approvalItemsColumns}
+                        data={approvalSelected?.itens || []}
+                        hidePagination
+                        emptyMessage="Nenhum item para os filtros selecionados."
+                      />
                     </div>
                     <div className="mt-3 border border-graphite-300 rounded-md overflow-hidden text-sm">
                       <div className="grid grid-cols-1 md:grid-cols-2 bg-graphite-100 text-xs text-graphite-600">
@@ -1162,7 +1603,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             onClick={() => handleApprovalAction('aprovado')}
                             disabled={approvalProcessing}
                           >
-                            <Check size={14} className="inline mr-1" />
+                            <CheckIcon className="inline h-4 w-4 mr-1" />
                             Aprovar pedido
                           </button>
                           <button
@@ -1170,7 +1611,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             onClick={() => handleApprovalAction('reprovado')}
                             disabled={approvalProcessing}
                           >
-                            <X size={14} className="inline mr-1" />
+                            <XMarkIcon className="inline h-4 w-4 mr-1" />
                             Reprovar pedido
                           </button>
                         </div>
@@ -1182,7 +1623,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             </div>
                             <div className="h-2 w-full bg-graphite-100 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-accent-600 transition-all"
+                                className="h-full bg-black dark:bg-white transition-all"
                                 style={{ width: `${approvalProgress}%` }}
                               />
                             </div>
@@ -1205,7 +1646,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="anexos">
                   <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Paperclip size={18} className="text-graphite-400" />
+                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
                       Nenhum anexo disponível. Adicione arquivos para registrar evidências.
                     </div>
                     <Button variant="secondary" size="sm">Adicionar anexo</Button>
@@ -1214,7 +1655,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="historico">
                   <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Clock size={18} className="text-graphite-400" />
+                      <ClockIcon className="h-5 w-5 text-graphite-400" />
                       Histórico de ações será exibido aqui.
                     </div>
                     <Button variant="ghost" size="sm">Ver histórico</Button>
@@ -1223,7 +1664,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="aprovacao">
                   <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircle2 size={18} className="text-graphite-400" />
+                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
                       Fluxo de aprovação pendente de configuração.
                     </div>
                     <Button variant="secondary" size="sm">Configurar fluxo</Button>
@@ -1236,8 +1677,66 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
           </div>
         );
+      }
 
-      case 'pedidos':
+      case 'pedidos': {
+        const pedidoColumns = [
+          {
+            key: 'id',
+            label: 'Pedido',
+            accessor: (row) => row.id,
+            cell: (row) => (
+              <div>
+                <div className="text-sm font-medium">{row.id}</div>
+                <div className="text-xs text-graphite-500">{row.data}</div>
+              </div>
+            ),
+          },
+          {
+            key: 'fornecedor',
+            label: 'Fornecedor',
+            cell: (row) => <span className="text-graphite-500">{row.fornecedor}</span>,
+          },
+          {
+            key: 'centroCusto',
+            label: 'Centro de Custo',
+            cell: (row) => <span className="text-graphite-500">{row.centroCusto}</span>,
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            accessor: (row) => statusMovimentoMap[row.status] || row.status,
+            cell: (row) => (
+              <div className="text-xs text-graphite-500 flex items-center gap-2">
+                <span
+                  className={`h-2.5 w-2.5 rounded-full ${
+                    statusColorMap[row.status] || 'bg-graphite-400'
+                  }`}
+                />
+                {statusMovimentoMap[row.status]}
+              </div>
+            ),
+          },
+          {
+            key: 'total',
+            label: 'Total',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+            cell: (row) => <div className="text-sm font-medium">{row.total}</div>,
+          },
+        ];
+        const itensColumns = [
+          { key: 'sku', label: 'SKU' },
+          { key: 'nome', label: 'Produto' },
+          {
+            key: 'qtd',
+            label: 'Qtd',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+          },
+        ];
+
         return (
           <div className="space-y-6">
             <Card className="border-graphite-200">
@@ -1260,7 +1759,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     className="h-9 w-9 text-graphite-600"
                     title="Opções gerais"
                   >
-                    <MoreVertical size={18} />
+                    <EllipsisVerticalIcon className="h-5 w-5" />
                   </Button>
                 </div>
               </CardHeader>
@@ -1275,7 +1774,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       <CardTitle className="text-base text-graphite-900">Lista de pedidos</CardTitle>
                     </div>
                     <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
-                      {pedidosFiltrados.length} resultados
+                      {pedidosTableCount} resultados
                     </Badge>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
@@ -1288,7 +1787,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       />
                     </div>
                     <div className="flex items-center gap-2 text-sm text-graphite-600">
-                      <SlidersHorizontal size={16} />
+                      <AdjustmentsHorizontalIcon className="h-4 w-4" />
                       <Select value={pedidoStatus} onValueChange={setPedidoStatus}>
                         <SelectTrigger className="h-9 w-[200px]">
                           <SelectValue placeholder="Todos os status" />
@@ -1304,7 +1803,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       </Select>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-graphite-600">
-                      <ArrowUpDown size={16} />
+                      <ArrowsUpDownIcon className="h-4 w-4" />
                       <Select value={pedidoSort} onValueChange={setPedidoSort}>
                         <SelectTrigger className="h-9 w-[180px]">
                           <SelectValue placeholder="Ordenar por" />
@@ -1319,55 +1818,23 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="border border-graphite-200 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Pedido</TableHead>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Centro de Custo</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Total</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {pedidosFiltrados.map((pedido) => (
-                          <TableRow
-                            key={pedido.id}
-                            onClick={() => {
-                              setPedidoSelecionado(pedido);
-                              setItemSelecionado(pedido.itens[0]?.sku);
-                            }}
-                            className={`cursor-pointer ${
-                              pedidoSelecionado?.id === pedido.id ? 'bg-accent-50' : 'hover:bg-graphite-50'
-                            }`}
-                          >
-                            <TableCell>
-                              <div className="text-sm font-medium">{pedido.id}</div>
-                              <div className="text-xs text-graphite-500">{pedido.data}</div>
-                            </TableCell>
-                            <TableCell className="text-graphite-500">{pedido.fornecedor}</TableCell>
-                            <TableCell className="text-graphite-500">{pedido.centroCusto}</TableCell>
-                            <TableCell>
-                              <div className="text-xs text-graphite-500 flex items-center gap-2">
-                                <Circle
-                                  size={14}
-                                  className={statusColorMap[pedido.status]
-                                    ? statusColorMap[pedido.status].replace('bg-', 'text-')
-                                    : 'text-graphite-400'}
-                                  fill="currentColor"
-                                />
-                                {statusMovimentoMap[pedido.status]}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="text-sm font-medium">{pedido.total}</div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                  <DataTable
+                    columns={pedidoColumns}
+                    data={pedidosFiltrados}
+                    onRowClick={(pedido) => {
+                      setPedidoSelecionado(pedido);
+                      setItemSelecionado(pedido.itens[0]?.sku);
+                    }}
+                    getRowClassName={(pedido) =>
+                      `cursor-pointer ${
+                        pedidoSelecionado?.id === pedido.id
+                          ? 'bg-graphite-50 dark:bg-graphite-800'
+                          : 'hover:bg-graphite-50'
+                      }`
+                    }
+                    onFilteredRowCountChange={setPedidosTableCount}
+                    emptyMessage="Nenhum pedido para os filtros selecionados."
+                  />
                 </CardContent>
               </Card>
 
@@ -1418,12 +1885,10 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         <div className="rounded-lg border border-graphite-200 p-3">
                           <p className="text-xs text-graphite-500">Status</p>
                           <div className="flex items-center gap-2 font-medium text-graphite-900">
-                            <Circle
-                              size={14}
-                              className={statusColorMap[pedidoSelecionado?.status]
-                                ? statusColorMap[pedidoSelecionado?.status].replace('bg-', 'text-')
-                                : 'text-graphite-400'}
-                              fill="currentColor"
+                            <span
+                              className={`h-2.5 w-2.5 rounded-full ${
+                                statusColorMap[pedidoSelecionado?.status] || 'bg-graphite-400'
+                              }`}
                             />
                             {pedidoSelecionado
                               ? statusMovimentoMap[pedidoSelecionado.status]
@@ -1443,7 +1908,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     <TabsContent value="linhas">
                       <div className="mt-4 space-y-4">
                         <div className="flex items-center justify-between gap-3 text-xs text-graphite-500">
-                          <span>{pedidoSelecionado?.itens?.length || 0} itens</span>
+                          <span>{itensTableCount} itens</span>
                           <Input
                             value={itemSearch}
                             onChange={(e) => setItemSearch(e.target.value)}
@@ -1451,34 +1916,22 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             className="w-40 h-8 text-xs"
                           />
                         </div>
-                        <div className="border border-graphite-200 rounded-md overflow-hidden max-h-56 overflow-y-auto">
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>SKU</TableHead>
-                                <TableHead>Produto</TableHead>
-                                <TableHead className="text-right">Qtd</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {itensFiltrados.map((item) => (
-                                <TableRow
-                                  key={item.sku}
-                                  onClick={() => setItemSelecionado(item.sku)}
-                                  className={`cursor-pointer ${
-                                    itemSelecionado === item.sku
-                                      ? 'bg-accent-50'
-                                      : 'hover:bg-graphite-50'
-                                  }`}
-                                >
-                                  <TableCell>{item.sku}</TableCell>
-                                  <TableCell className="text-graphite-500">{item.nome}</TableCell>
-                                  <TableCell className="text-right">{item.qtd}</TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </div>
+                        <DataTable
+                          columns={itensColumns}
+                          data={itensFiltrados}
+                          hidePagination
+                          tableWrapperClassName="max-h-56 overflow-y-auto"
+                          onFilteredRowCountChange={setItensTableCount}
+                          onRowClick={(item) => setItemSelecionado(item.sku)}
+                          getRowClassName={(item) =>
+                            `cursor-pointer ${
+                              itemSelecionado === item.sku
+                                ? 'bg-graphite-50 dark:bg-graphite-800'
+                                : 'hover:bg-graphite-50'
+                            }`
+                          }
+                          emptyMessage="Nenhum item para os filtros selecionados."
+                        />
                         {pedidoSelecionado?.itens?.map((item) =>
                           item.sku === itemSelecionado ? (
                             <div key={item.sku} className="text-sm space-y-2 border border-graphite-200 rounded-md p-3">
@@ -1506,7 +1959,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     <TabsContent value="anexos">
                       <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 text-sm text-graphite-600">
-                          <Paperclip size={18} className="text-graphite-400" />
+                          <PaperClipIcon className="h-5 w-5 text-graphite-400" />
                           Nenhum anexo. Envie documentos de cotação ou contratos.
                         </div>
                         <Button variant="secondary" size="sm">Adicionar anexo</Button>
@@ -1515,7 +1968,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     <TabsContent value="historico">
                       <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 text-sm text-graphite-600">
-                          <Clock size={18} className="text-graphite-400" />
+                          <ClockIcon className="h-5 w-5 text-graphite-400" />
                           Histórico de mudanças e aprovações ficará disponível aqui.
                         </div>
                         <Button variant="ghost" size="sm">Ver histórico</Button>
@@ -1524,7 +1977,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     <TabsContent value="aprovacao">
                       <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 text-sm text-graphite-600">
-                          <CheckCircle2 size={18} className="text-graphite-400" />
+                          <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
                           Fluxo de aprovação: aguardando definição de alçadas.
                         </div>
                         <Button variant="secondary" size="sm">Definir alçadas</Button>
@@ -1536,8 +1989,24 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
           </div>
         );
+      }
 
-      case 'notas-fiscais':
+      case 'notas-fiscais': {
+        const notasFiscaisColumns = [
+          { key: 'numero', label: 'NF' },
+          {
+            key: 'fornecedor',
+            label: 'Fornecedor',
+            cell: (row) => <span className="text-graphite-500">{row.fornecedor}</span>,
+          },
+          {
+            key: 'valor',
+            label: 'Valor',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+          },
+        ];
+
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-graphite-200 p-6">
@@ -1556,31 +2025,18 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   <TabsTrigger value="aprovacao">Aprovação</TabsTrigger>
                 </TabsList>
                 <TabsContent value="itens">
-                  <div className="mt-4 border border-graphite-200 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>NF</TableHead>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {[1, 2, 3].map((row) => (
-                          <TableRow key={row}>
-                            <TableCell>NF-{2000 + row}</TableCell>
-                            <TableCell className="text-graphite-500">Fornecedor XYZ</TableCell>
-                            <TableCell className="text-right">R$ 8.320,00</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="mt-4">
+                    <DataTable
+                      columns={notasFiscaisColumns}
+                      data={notasFiscaisData}
+                      emptyMessage="Nenhuma nota fiscal para os filtros selecionados."
+                    />
                   </div>
                 </TabsContent>
                 <TabsContent value="anexos">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Paperclip size={18} className="text-graphite-400" />
+                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
                       Nenhum anexo. Inclua XML, PDF e documentos fiscais.
                     </div>
                     <Button variant="secondary" size="sm">Adicionar XML</Button>
@@ -1589,7 +2045,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="historico">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Clock size={18} className="text-graphite-400" />
+                      <ClockIcon className="h-5 w-5 text-graphite-400" />
                       Histórico fiscal será listado aqui.
                     </div>
                     <Button variant="ghost" size="sm">Ver histórico</Button>
@@ -1598,7 +2054,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="aprovacao">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircle2 size={18} className="text-graphite-400" />
+                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
                       Aprovação aguardando validação do responsável.
                     </div>
                     <Button variant="secondary" size="sm">Solicitar aprovação</Button>
@@ -1608,8 +2064,25 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
           </div>
         );
+      }
 
-      case 'relatorios':
+      case 'relatorios': {
+        const relatoriosColumns = [
+          { key: 'relatorio', label: 'Relatório' },
+          {
+            key: 'periodicidade',
+            label: 'Periodicidade',
+            cell: (row) => <span className="text-graphite-500">{row.periodicidade}</span>,
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+          },
+        ];
+
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-graphite-200 p-6">
@@ -1628,31 +2101,18 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   <TabsTrigger value="aprovacao">Aprovação</TabsTrigger>
                 </TabsList>
                 <TabsContent value="itens">
-                  <div className="mt-4 border border-graphite-200 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Relatório</TableHead>
-                          <TableHead>Periodicidade</TableHead>
-                          <TableHead className="text-right">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {['Mensal', 'Trimestral', 'Anual'].map((item, index) => (
-                          <TableRow key={item}>
-                            <TableCell>Consolidação {index + 1}</TableCell>
-                            <TableCell className="text-graphite-500">{item}</TableCell>
-                            <TableCell className="text-right">Atualizado</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="mt-4">
+                    <DataTable
+                      columns={relatoriosColumns}
+                      data={relatoriosData}
+                      emptyMessage="Nenhum relatório para os filtros selecionados."
+                    />
                   </div>
                 </TabsContent>
                 <TabsContent value="anexos">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Paperclip size={18} className="text-graphite-400" />
+                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
                       Nenhum anexo. Adicione relatórios ou planilhas de apoio.
                     </div>
                     <Button variant="secondary" size="sm">Adicionar arquivo</Button>
@@ -1661,7 +2121,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="historico">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Clock size={18} className="text-graphite-400" />
+                      <ClockIcon className="h-5 w-5 text-graphite-400" />
                       Histórico de versões ficará disponível aqui.
                     </div>
                     <Button variant="ghost" size="sm">Ver histórico</Button>
@@ -1670,7 +2130,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="aprovacao">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircle2 size={18} className="text-graphite-400" />
+                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
                       Aprovação pendente do gestor da área.
                     </div>
                     <Button variant="secondary" size="sm">Solicitar aprovação</Button>
@@ -1680,8 +2140,25 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
           </div>
         );
+      }
 
-      case 'configuracoes':
+      case 'configuracoes': {
+        const configuracoesColumns = [
+          { key: 'parametro', label: 'Parâmetro' },
+          {
+            key: 'valor',
+            label: 'Valor',
+            cell: (row) => <span className="text-graphite-500">{row.valor}</span>,
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+          },
+        ];
+
         return (
           <div className="space-y-6">
             <div className="bg-white rounded-lg border border-graphite-200 p-6">
@@ -1897,31 +2374,18 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
                 </TabsContent>
                 <TabsContent value="itens">
-                  <div className="mt-4 border border-graphite-200 rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Parâmetro</TableHead>
-                          <TableHead>Valor</TableHead>
-                          <TableHead className="text-right">Status</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {['Fluxo de aprovação', 'Perfil padrão', 'Integração'].map((item) => (
-                          <TableRow key={item}>
-                            <TableCell>{item}</TableCell>
-                            <TableCell className="text-graphite-500">Ativo</TableCell>
-                            <TableCell className="text-right">OK</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  <div className="mt-4">
+                    <DataTable
+                      columns={configuracoesColumns}
+                      data={configuracoesData}
+                      emptyMessage="Nenhuma configuração para os filtros selecionados."
+                    />
                   </div>
                 </TabsContent>
                 <TabsContent value="anexos">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Paperclip size={18} className="text-graphite-400" />
+                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
                       Nenhum anexo. Adicione políticas ou documentos de suporte.
                     </div>
                     <Button variant="secondary" size="sm">Adicionar arquivo</Button>
@@ -1930,7 +2394,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="historico">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <Clock size={18} className="text-graphite-400" />
+                      <ClockIcon className="h-5 w-5 text-graphite-400" />
                       Histórico de ajustes ficará disponível aqui.
                     </div>
                     <Button variant="ghost" size="sm">Ver histórico</Button>
@@ -1939,7 +2403,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <TabsContent value="aprovacao">
                   <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircle2 size={18} className="text-graphite-400" />
+                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
                       Aprovação pendente para mudanças sensíveis.
                     </div>
                     <Button variant="secondary" size="sm">Solicitar aprovação</Button>
@@ -1949,61 +2413,14 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
           </div>
         );
+      }
 
       default:
         return null;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-mist dark:bg-graphite-900">
-      <Sidebar
-        collapsed={sidebarCollapsed}
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        onLogout={handleLogout}
-        currentPage={currentPage}
-        onNavigate={handleNavigate}
-      />
-
-      <Header
-        user={user}
-        sidebarCollapsed={sidebarCollapsed}
-        title={activeCover.title}
-        breadcrumb={['Início', activeCover.title]}
-      />
-
-      <main
-        className={`
-          ${sidebarCollapsed ? 'ml-20' : 'ml-64'}
-          mt-20
-          p-6
-          transition-all duration-300
-        `}
-      >
-        <section className="bg-white rounded-lg border border-graphite-200 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-graphite-900">{activeCover.title}</h2>
-              <p className="text-sm text-graphite-500">{activeCover.description}</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <div>
-                <p className="text-xs text-graphite-500">Situação</p>
-                <p className="text-sm font-medium text-graphite-900">{activeCover.status}</p>
-              </div>
-              <div>
-                <p className="text-xs text-graphite-500">Responsável</p>
-                <p className="text-sm font-medium text-graphite-900">{activeCover.owner}</p>
-              </div>
-              <div>
-                <p className="text-xs text-graphite-500">Última atualização</p>
-                <p className="text-sm font-medium text-graphite-900">Hoje, 10:24</p>
-              </div>
-            </div>
-          </div>
-        </section>
-        {renderContent()}
-      </main>
+  const dialog = (
       <Dialog open={showRequestCard} onOpenChange={setShowRequestCard}>
         <DialogContent className="max-w-5xl max-h-[85vh] flex flex-col">
           <DialogHeader>
@@ -2013,8 +2430,21 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             )}
           </DialogHeader>
 
-          <div className="flex-1 overflow-y-auto pr-1">
-            <div className="space-y-6">
+          <div className="relative flex-1 overflow-y-auto pr-1">
+            {requestLookupsLoading && (
+              <div className="absolute inset-0 z-10 rounded-lg bg-white/80 dark:bg-black/70 backdrop-blur-[1px]">
+                <div className="p-6 space-y-4 animate-pulse">
+                  <div className="h-5 w-40 bg-graphite-200 rounded-md" />
+                  <div className="h-24 w-full bg-graphite-200 rounded-lg" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="h-16 bg-graphite-200 rounded-lg" />
+                    <div className="h-16 bg-graphite-200 rounded-lg" />
+                  </div>
+                  <div className="h-40 w-full bg-graphite-200 rounded-lg" />
+                </div>
+              </div>
+            )}
+            <div className={`space-y-6 ${requestLookupsLoading ? 'opacity-60 pointer-events-none' : ''}`}>
               {requestSaving && (
                 <div className="border border-graphite-200 bg-white rounded-md px-4 py-3">
                   <div className="flex items-center justify-between text-xs text-graphite-500 mb-2">
@@ -2023,7 +2453,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
                   <div className="h-2 w-full bg-graphite-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-accent-600 transition-all"
+                      className="h-full bg-black dark:bg-white transition-all"
                       style={{ width: `${requestProgress}%` }}
                     />
                   </div>
@@ -2066,16 +2496,16 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 <Card className="border-graphite-200">
                   <CardContent className="p-6 space-y-6">
                   <details className="group border border-graphite-200 rounded-lg bg-white" open>
-                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-accent-300 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
+                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-graphite-600 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
                       <div>
                         <p className="text-xs uppercase text-graphite-500">Dados gerais</p>
                         <h4 className="text-sm font-semibold text-graphite-900">Informações da solicitação</h4>
                       </div>
-                      <ChevronDown className="text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" size={18} />
+                      <ChevronDownIcon className="h-4 w-4 text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" />
                     </summary>
                     <div className="px-5 pb-5 space-y-4">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="md:col-span-2 border border-accent-100 bg-accent-50 rounded-md p-4">
+                        <div className="md:col-span-2 border border-graphite-200 dark:border-graphite-700 bg-graphite-50 dark:bg-graphite-800 rounded-md p-4">
                           <label className="text-xs uppercase text-graphite-500">Tipo de Solicitação</label>
                           <Select
                             value={requestMeta.tipoSolicitacao}
@@ -2192,7 +2622,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <PopoverTrigger asChild>
                               <Button variant="outline" size="default" className="w-full justify-between">
                                 {formatDate(requestDates.emissao)}
-                                <CalendarIcon size={16} className="text-graphite-400" />
+                                <CalendarIcon className="h-4 w-4 text-graphite-400" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -2217,7 +2647,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <PopoverTrigger asChild>
                               <Button variant="outline" size="default" className="w-full justify-between">
                                 {formatDate(requestDates.necessidade)}
-                                <CalendarIcon size={16} className="text-graphite-400" />
+                                <CalendarIcon className="h-4 w-4 text-graphite-400" />
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0" align="start">
@@ -2241,12 +2671,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </details>
 
                   <details className="group border border-graphite-200 rounded-lg bg-white">
-                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-accent-300 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
+                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-graphite-600 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
                       <div>
                         <p className="text-xs uppercase text-graphite-500">Dados financeiros</p>
                         <h4 className="text-sm font-semibold text-graphite-900">Condições e valores</h4>
                       </div>
-                      <ChevronDown className="text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" size={18} />
+                      <ChevronDownIcon className="h-4 w-4 text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" />
                     </summary>
                     <div className="px-5 pb-5 space-y-3">
                       <div className="text-sm text-graphite-500">
@@ -2256,12 +2686,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </details>
 
                   <details className="group border border-graphite-200 rounded-lg bg-white">
-                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-accent-300 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
+                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-graphite-600 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
                       <div>
                         <p className="text-xs uppercase text-graphite-500">Dados fiscais</p>
                         <h4 className="text-sm font-semibold text-graphite-900">Impostos e natureza</h4>
                       </div>
-                      <ChevronDown className="text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" size={18} />
+                      <ChevronDownIcon className="h-4 w-4 text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" />
                     </summary>
                     <div className="px-5 pb-5 space-y-3">
                       <div className="text-sm text-graphite-500">
@@ -2271,12 +2701,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </details>
 
                   <details className="group border border-graphite-200 rounded-lg bg-white" open>
-                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-accent-300 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
+                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-graphite-600 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
                       <div>
                         <p className="text-xs uppercase text-graphite-500">Itens</p>
                         <h4 className="text-sm font-semibold text-graphite-900">Linhas da solicitação</h4>
                       </div>
-                      <ChevronDown className="text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" size={18} />
+                      <ChevronDownIcon className="h-4 w-4 text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" />
                     </summary>
                     <div className="px-5 pb-5 space-y-3">
                       <div className="flex items-center justify-end">
@@ -2341,7 +2771,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                 disabled={requestItems.length === 1}
                                 title="Excluir item"
                               >
-                                <Trash2 size={16} />
+                                <TrashIcon className="h-4 w-4" />
                               </button>
                             </div>
                           ))}
@@ -2365,12 +2795,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </details>
 
                   <details className="group border border-graphite-200 rounded-lg bg-white">
-                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-accent-300 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
+                    <summary className="cursor-pointer list-none px-5 py-4 flex items-center justify-between rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-graphite-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-graphite-600 dark:focus-visible:ring-offset-graphite-900 [-webkit-details-marker]:hidden group-hover:text-graphite-900 dark:group-hover:text-graphite-100">
                       <div>
                         <p className="text-xs uppercase text-graphite-500">Observação</p>
                         <h4 className="text-sm font-semibold text-graphite-900">Observação da Solicitação</h4>
                       </div>
-                      <ChevronDown className="text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" size={18} />
+                      <ChevronDownIcon className="h-4 w-4 text-graphite-600 transition-transform group-open:rotate-180 group-hover:text-graphite-800" />
                     </summary>
                     <div className="px-5 pb-5 space-y-2">
                       <Textarea
@@ -2405,8 +2835,47 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
   );
+
+  return (
+    <SidebarProvider defaultCollapsed={false}>
+      <DashboardLayout
+        user={user}
+        activeCover={activeCover}
+        currentPage={currentPage}
+        onLogout={handleLogout}
+        onNavigate={handleNavigate}
+        dialog={dialog}
+      >
+        <>
+        <section className="bg-white rounded-lg border border-graphite-200 p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold text-graphite-900">{activeCover.title}</h2>
+              <p className="text-sm text-graphite-500">{activeCover.description}</p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <div>
+                <p className="text-xs text-graphite-500">Situação</p>
+                <p className="text-sm font-medium text-graphite-900">{activeCover.status}</p>
+              </div>
+              <div>
+                <p className="text-xs text-graphite-500">Responsável</p>
+                <p className="text-sm font-medium text-graphite-900">{activeCover.owner}</p>
+              </div>
+              <div>
+                <p className="text-xs text-graphite-500">Última atualização</p>
+                <p className="text-sm font-medium text-graphite-900">Hoje, 10:24</p>
+              </div>
+            </div>
+          </div>
+        </section>
+        {renderContent()}
+        </>
+      </DashboardLayout>
+    </SidebarProvider>
+  );
+
 };
 
 export default DashboardPage;

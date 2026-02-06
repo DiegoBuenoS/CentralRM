@@ -26,22 +26,22 @@ export default {
   				'800': '#1f2937',
   				'900': '#0b0d0f'
   			},
-  			accent: {
-  				'50': '#eef3ff',
-  				'100': '#dbe6ff',
-  				'200': '#b8ccff',
-  				'300': '#8ea8ff',
-  				'400': '#5f7dff',
-  				'500': '#2f5bd9',
-  				'600': '#1f4fbf',
-  				'700': '#1a419c',
-  				'800': '#153479',
-  				'900': '#0f2558',
-  				DEFAULT: 'hsl(var(--accent))',
-  				foreground: 'hsl(var(--accent-foreground))'
-  			},
+			accent: {
+				'50': '#f7f7f7',
+				'100': '#eeeeee',
+				'200': '#e2e2e2',
+				'300': '#cfcfcf',
+				'400': '#a3a3a3',
+				'500': '#7a7a7a',
+				'600': '#1f1f1f',
+				'700': '#1a1a1a',
+				'800': '#111111',
+				'900': '#0b0b0b',
+				DEFAULT: 'hsl(var(--accent))',
+				foreground: 'hsl(var(--accent-foreground))'
+			},
   			surface: '#ffffff',
-  			mist: '#f5f6f8',
+			mist: '#ffffff',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {

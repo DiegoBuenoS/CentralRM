@@ -83,6 +83,87 @@ function App() {
         }
       />
 
+      <Route
+        path="/cadastros"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/estoque"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-estoque" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/estoque/produtos"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-estoque-produtos" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/estoque/local"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-estoque-local" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/financeiro"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-financeiro" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/financeiro/clientes"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-financeiro-clientes" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/financeiro/contas"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-financeiro-contas" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/est-compras-fat"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-est-compras-fat" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/cadastros/globais"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="cadastros-globais" />
+          </ProtectedRoute>
+        }
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

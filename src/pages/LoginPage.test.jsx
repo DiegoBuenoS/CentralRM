@@ -26,7 +26,7 @@ describe('Página de Login', () => {
   it('deve renderizar o formulário de login', () => {
     renderWithRouter();
     
-    expect(screen.getByText('Central de Aprovações')).toBeInTheDocument();
+    expect(screen.getByText('Central RM')).toBeInTheDocument();
     expect(screen.getByLabelText('Usuário')).toBeInTheDocument();
     expect(screen.getByLabelText('Senha')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Entrar' })).toBeInTheDocument();
