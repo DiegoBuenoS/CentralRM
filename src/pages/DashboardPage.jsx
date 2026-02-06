@@ -6,8 +6,8 @@ import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { SidebarProvider, useSidebar } from '../components/ui/sidebar';
 import { logoutUser, isAuthenticated, getConsultaSql } from '../services';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/textarea';
 import { Separator } from '../components/ui/separator';
 import {
