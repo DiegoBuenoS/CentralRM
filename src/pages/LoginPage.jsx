@@ -2,16 +2,9 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  UserIcon,
-  LockClosedIcon,
-  ExclamationCircleIcon,
-  CheckCircleIcon,
-  MoonIcon,
-  SunIcon,
-} from '@heroicons/react/24/outline';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { User, Lock, AlertCircle, CheckCircle, Moon, Sun } from 'lucide-react';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import {
   Card,
   CardContent,
@@ -33,7 +26,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
 
-  // UI state
+  // UI states
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -130,7 +123,7 @@ const LoginPage = () => {
   return (
     <div className="min-h-screen bg-white dark:bg-black flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-md">
-        <Card className="border-graphite-200 bg-white shadow-sm dark:border-graphite-800 dark:bg-graphite-800">
+        <Card className="border-graphite-200 bg-white shadow-sm dark:border-graphite-800 dark:bg-graphite-950">
           <CardHeader className="text-center space-y-2">
             <div className="flex justify-end">
               <Button
@@ -141,17 +134,13 @@ const LoginPage = () => {
                 aria-pressed={isDarkMode}
                 className="text-graphite-600 hover:text-black dark:text-graphite-300 dark:hover:text-white"
               >
-                {isDarkMode ? (
-                  <SunIcon className="h-4 w-4" />
-                ) : (
-                  <MoonIcon className="h-4 w-4" />
-                )}
+                {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
                 {isDarkMode ? 'Tema claro' : 'Tema escuro'}
               </Button>
             </div>
             <div className="flex justify-center">
               <div className="w-12 h-12 rounded-lg bg-black flex items-center justify-center dark:bg-white">
-                <LockClosedIcon className="h-5 w-5 text-white dark:text-black" />
+                <Lock className="text-white dark:text-black" size={22} />
               </div>
             </div>
             <p className="text-xs uppercase tracking-[0.18em] text-graphite-500 dark:text-graphite-400">
@@ -167,14 +156,14 @@ const LoginPage = () => {
           <CardContent className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start space-x-3 dark:bg-red-950/40 dark:border-red-900">
-                <ExclamationCircleIcon className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" />
+                <AlertCircle className="text-red-600 flex-shrink-0 mt-0.5 dark:text-red-300" size={20} />
                 <p className="text-red-700 text-sm dark:text-red-200">{error}</p>
               </div>
             )}
 
             {success && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3 dark:bg-green-950/40 dark:border-green-900">
-                <CheckCircleIcon className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5 dark:text-green-300" />
+                <CheckCircle className="text-green-600 flex-shrink-0 mt-0.5 dark:text-green-300" size={20} />
                 <p className="text-green-700 text-sm dark:text-green-200">{success}</p>
               </div>
             )}
@@ -184,7 +173,7 @@ const LoginPage = () => {
                   Usuário
                 </label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-500 dark:text-graphite-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-500 dark:text-graphite-400" size={18} />
                   <Input
                     id="email"
                     type="text"
@@ -207,7 +196,7 @@ const LoginPage = () => {
                   Senha
                 </label>
                 <div className="relative">
-                  <LockClosedIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-500 dark:text-graphite-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-graphite-500 dark:text-graphite-400" size={18} />
                   <Input
                     id="password"
                     type="password"
@@ -251,7 +240,7 @@ const LoginPage = () => {
         </Card>
 
         {API_CONFIG.GENERAL.DEBUG && (
-          <div className="mt-4 p-4 bg-white border border-graphite-200 rounded-lg text-xs text-graphite-600 dark:bg-graphite-800 dark:border-graphite-800 dark:text-graphite-400">
+          <div className="mt-4 p-4 bg-white border border-graphite-200 rounded-lg text-xs text-graphite-600 dark:bg-graphite-950 dark:border-graphite-800 dark:text-graphite-400">
             <p className="font-mono">API: {API_CONFIG.BASE_URL}</p>
             <p className="font-mono">Auth: {API_CONFIG.AUTH_CONFIG.TYPE}</p>
           </div>
