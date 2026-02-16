@@ -88,7 +88,7 @@ export const getConsultaSql = async ({
   encodeQuery = API_CONFIG.CONSULTA_SQL.ENCODE_QUERY,
   basePath = API_CONFIG.CONSULTA_SQL.BASE_PATH,
 }) => {
-  const path = buildConsultaSqlPath({
+  const payload = {
     codSentenca,
     codColigada,
     codSistema,
@@ -97,12 +97,12 @@ export const getConsultaSql = async ({
     useUppercaseParameters,
     encodeQuery,
     basePath,
-  });
+  };
 
-  if (!path) {
+  if (!buildConsultaSqlPath(payload)) {
     throw new Error('Parâmetros inválidos para Consulta SQL');
   }
 
-  const response = await apiClient.get(path);
+  const response = await apiClient.post(API_CONFIG.CONSULTA_SQL.BACKEND_ENDPOINT, payload);
   return response.data;
 };

@@ -2,6 +2,7 @@
 
 import axios from 'axios';
 import API_CONFIG from '../config/api.config';
+import { getRuntimeConfig } from '../config/runtime.config';
 
 const apiClient = axios.create({
   baseURL: API_CONFIG.BASE_URL,
@@ -11,12 +12,12 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const username = localStorage.getItem('username');
-    const password = localStorage.getItem('password');
+    const runtimeConfig = getRuntimeConfig();
+    config.baseURL = runtimeConfig.backendBaseUrl || API_CONFIG.BASE_URL;
+    const sessionToken = localStorage.getItem('session_token');
 
-    if (username && password) {
-      const credentials = btoa(`${username}:${password}`);
-      config.headers.Authorization = `Basic ${credentials}`;
+    if (sessionToken) {
+      config.headers.Authorization = `Bearer ${sessionToken}`;
     }
 
     return config;
@@ -28,8 +29,7 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('username');
-      localStorage.removeItem('password');
+      localStorage.removeItem('session_token');
       localStorage.removeItem('user_data');
       window.location.href = '/';
     }

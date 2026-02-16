@@ -1,7 +1,7 @@
 // Test setup
 
 import '@testing-library/jest-dom';
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
 // Cleanup
@@ -17,10 +17,10 @@ const localStorageMock = {
   clear: vi.fn(),
 };
 
-global.localStorage = localStorageMock;
+globalThis.localStorage = localStorageMock;
 
 // Console
-global.console = {
+globalThis.console = {
   ...console,
   error: vi.fn(),
   warn: vi.fn(),

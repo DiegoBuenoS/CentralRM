@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+import tailwindcssAnimate from "tailwindcss-animate";
+
 export default {
     darkMode: ["class"],
     content: [
@@ -6,10 +8,31 @@ export default {
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-  	extend: {
+    fontSize: {
+      xs: ['0.8125rem', { lineHeight: '1.4' }],
+      sm: ['0.9375rem', { lineHeight: '1.5' }],
+      base: ['1rem', { lineHeight: '1.6' }],
+      lg: ['1.125rem', { lineHeight: '1.55' }],
+      xl: ['1.25rem', { lineHeight: '1.45' }],
+      '2xl': ['1.5rem', { lineHeight: '1.35' }],
+      '3xl': ['1.875rem', { lineHeight: '1.25' }],
+      '4xl': ['2.25rem', { lineHeight: '1.2' }],
+      '5xl': ['3rem', { lineHeight: '1.1' }],
+      '6xl': ['3.75rem', { lineHeight: '1.05' }],
+      '7xl': ['4.5rem', { lineHeight: '1' }],
+      '8xl': ['6rem', { lineHeight: '1' }],
+      '9xl': ['8rem', { lineHeight: '1' }],
+    },
+  		extend: {
   		fontFamily: {
   			sans: [
-  				'Inter',
+  				'SF Pro Text',
+  				'SF Pro Display',
+  				'Helvetica Neue',
+  				'Helvetica',
+  				'-apple-system',
+  				'BlinkMacSystemFont',
+  				'Segoe UI',
   				'sans-serif'
   			]
   		},
@@ -90,5 +113,5 @@ export default {
   		}
   	}
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 }

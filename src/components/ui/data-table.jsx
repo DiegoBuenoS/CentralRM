@@ -8,11 +8,11 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Button } from './button';
-import { Input } from './input';
+import { Button } from './Button';
+import { Input } from './Input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, FunnelIcon } from '@heroicons/react/24/outline';
 
 const ALL_VALUE = '__all__';
 
@@ -43,14 +43,40 @@ const buildColumnDefs = (columns) =>
     },
   }));
 
-const DataTableFilters = ({ table }) => {
+const DataTableFilters = ({
+  table,
+  filterTitle = 'Filtros',
+  filterContainerClassName = '',
+  filterGridClassName = '',
+  filterLabelClassName = '',
+  filterInputClassName = '',
+  filterSelectTriggerClassName = '',
+}) => {
   const columns = table.getAllColumns().filter((column) => column.getCanFilter());
 
   if (!columns.length) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 flex-1">
+    <div
+      className={`mb-4 rounded-lg border border-graphite-200 bg-graphite-50/70 p-3 dark:border-graphite-700 dark:bg-graphite-900/55 ${filterContainerClassName}`.trim()}
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-graphite-500 dark:text-graphite-300">
+          <FunnelIcon className="h-3.5 w-3.5" />
+          {filterTitle}
+        </p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 border-graphite-300 bg-white text-graphite-700 hover:bg-graphite-100 dark:border-graphite-600 dark:bg-graphite-900 dark:text-graphite-200 dark:hover:bg-graphite-800"
+          onClick={() => table.resetColumnFilters()}
+        >
+          Limpar filtros
+        </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 flex-1 ${filterGridClassName}`.trim()}>
         {columns.map((column) => {
           const uniqueValues = Array.from(column.getFacetedUniqueValues().keys()).filter(
             (value) => value !== undefined && value !== null && value !== ''
@@ -61,7 +87,9 @@ const DataTableFilters = ({ table }) => {
 
           return (
             <div key={column.id} className="space-y-1">
-              <label className="text-[11px] font-semibold uppercase tracking-wide text-graphite-400">
+              <label
+                className={`text-[11px] font-semibold uppercase tracking-[0.08em] text-graphite-500 dark:text-graphite-300 ${filterLabelClassName}`.trim()}
+              >
                 {label}
               </label>
               {mode === 'select' ? (
@@ -69,7 +97,9 @@ const DataTableFilters = ({ table }) => {
                   value={value || ALL_VALUE}
                   onValueChange={(next) => column.setFilterValue(next === ALL_VALUE ? '' : next)}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger
+                    className={`h-9 border-graphite-300 bg-white text-graphite-700 focus:ring-2 focus:ring-graphite-400 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:focus:ring-graphite-600 ${filterSelectTriggerClassName}`.trim()}
+                  >
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -86,26 +116,20 @@ const DataTableFilters = ({ table }) => {
                   value={value || ''}
                   onChange={(event) => column.setFilterValue(event.target.value)}
                   placeholder={`Filtrar ${label}`}
-                  className="h-9 text-sm"
+                  className={`h-9 border-graphite-300 bg-white text-sm text-graphite-700 placeholder:text-graphite-400 focus:ring-2 focus:ring-graphite-400 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:placeholder:text-graphite-400 dark:focus:ring-graphite-600 ${filterInputClassName}`.trim()}
                 />
               )}
             </div>
           );
         })}
       </div>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => table.resetColumnFilters()}
-      >
-        Limpar filtros
-      </Button>
+      </div>
     </div>
   );
 };
 
 const DataTablePagination = ({ table, pageSizes = defaultPageSizes }) => (
-  <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-2 text-sm text-graphite-500">
+  <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-2 text-sm text-graphite-500 dark:text-graphite-300">
     <div className="flex items-center gap-2">
       <span>Linhas por página</span>
       <Select
@@ -162,6 +186,12 @@ const DataTable = ({
   hidePagination = false,
   onFilteredRowCountChange,
   tableWrapperClassName = '',
+  filterTitle = 'Filtros',
+  filterContainerClassName = '',
+  filterGridClassName = '',
+  filterLabelClassName = '',
+  filterInputClassName = '',
+  filterSelectTriggerClassName = '',
 }) => {
   const columnDefs = React.useMemo(() => buildColumnDefs(columns), [columns]);
   const [columnFilters, setColumnFilters] = React.useState([]);
@@ -196,8 +226,16 @@ const DataTable = ({
 
   return (
     <div>
-      <DataTableFilters table={table} />
-      <div className={`border border-graphite-200 rounded-md overflow-hidden ${tableWrapperClassName}`.trim()}>
+      <DataTableFilters
+        table={table}
+        filterTitle={filterTitle}
+        filterContainerClassName={filterContainerClassName}
+        filterGridClassName={filterGridClassName}
+        filterLabelClassName={filterLabelClassName}
+        filterInputClassName={filterInputClassName}
+        filterSelectTriggerClassName={filterSelectTriggerClassName}
+      />
+      <div className={`border border-graphite-200 rounded-md overflow-hidden dark:border-graphite-700 dark:bg-graphite-900/35 ${tableWrapperClassName}`.trim()}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
@@ -228,7 +266,7 @@ const DataTable = ({
             ))}
             {rows.length === 0 && (
               <TableRow>
-                <TableCell colSpan={columns.length} className="text-center text-sm text-graphite-500">
+                <TableCell colSpan={columns.length} className="text-center text-sm text-graphite-500 dark:text-graphite-300">
                   {emptyMessage}
                 </TableCell>
               </TableRow>

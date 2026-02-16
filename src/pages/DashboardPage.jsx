@@ -5,7 +5,14 @@ import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import { SidebarProvider, useSidebar } from '../components/ui/sidebar';
-import { logoutUser, isAuthenticated, getConsultaSql } from '../services';
+import {
+  logoutUser,
+  isAuthenticated,
+  getConsultaSql,
+  getTravelRouteEstimate,
+  uploadFiles,
+  getPlaceSuggestions,
+} from '../services';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/textarea';
@@ -38,7 +45,10 @@ import { Popover, PopoverContent, PopoverTrigger } from '../components/ui/popove
 import { Calendar } from '../components/ui/calendar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs';
 import { DataTable } from '../components/ui/data-table';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../components/ui/chart';
 import API_CONFIG from '../config/api.config';
+import { getRuntimeConfig, saveRuntimeConfig } from '../config/runtime.config';
+import { ComposedChart, Line, Area, CartesianGrid, XAxis, YAxis, Legend } from 'recharts';
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
@@ -49,14 +59,26 @@ import {
   AdjustmentsHorizontalIcon,
   ArrowsUpDownIcon,
   TrashIcon,
-  InformationCircleIcon,
   CheckIcon,
   XMarkIcon,
   CalendarIcon,
+  ChartBarIcon,
+  CheckBadgeIcon,
+  FolderIcon,
+  ReceiptPercentIcon,
   ShoppingCartIcon,
   DocumentTextIcon,
   UsersIcon,
   ChevronDownIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  MapPinIcon,
+  ArrowRightIcon,
+  BriefcaseIcon,
+  FlagIcon,
+  PrinterIcon,
+  EnvelopeIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 
 const DashboardLayout = ({
@@ -87,9 +109,9 @@ const DashboardLayout = ({
 
       <main
         className={`
-          ${collapsed ? 'ml-20' : 'ml-64'}
-          mt-20
-          p-6
+          ${collapsed ? 'ml-[4.5rem]' : 'ml-60'}
+          mt-16
+          p-5
           transition-all duration-300
         `}
       >
@@ -104,32 +126,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [user, setUser] = useState(null);
-  const [taskTab, setTaskTab] = useState('itens');
-  const [requestFieldConfig, setRequestFieldConfig] = useState({
-    header: {
-      BranchId: false,
-      WarehouseCode: false,
-      DeliveryWarehouseCode: false,
-      DestinyWarehouseCode: false,
-      CustomerVendorCompanyId: false,
-      CustomerVendorCode: false,
-      Number: false,
-      Series: false,
-      MovementTypeCode: false,
-      Type: false,
-      Date: false,
-    },
-    items: {
-      ProductId: false,
-      Quantity: true,
-      UnitPrice: false,
-    },
-    payments: {
-      Value: true,
-      PaymentType: false,
-      DueDate: false,
-    },
-  });
+  const [taskTab, setTaskTab] = useState('pendente');
 
   // Auth
   useEffect(() => {
@@ -180,102 +177,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     console.log('Navegando para:', pageId);
   };
 
-  const updateRequestHeaderField = (field, value) => {
-    setRequestFieldConfig((prev) => ({
-      ...prev,
-      header: {
-        ...prev.header,
-        [field]: value,
-      },
-    }));
-  };
-
-  const updateRequestItemField = (field, value) => {
-    setRequestFieldConfig((prev) => ({
-      ...prev,
-      items: {
-        ...prev.items,
-        [field]: value,
-      },
-    }));
-  };
-
-  const updateRequestPaymentField = (field, value) => {
-    setRequestFieldConfig((prev) => ({
-      ...prev,
-      payments: {
-        ...prev.payments,
-        [field]: value,
-      },
-    }));
-  };
-
-  const buildRequestPayloadPreview = () => {
-    const headerFieldTypes = {
-      BranchId: 0,
-      WarehouseCode: 'string',
-      DeliveryWarehouseCode: 'string',
-      DestinyWarehouseCode: 'string',
-      CustomerVendorCompanyId: 0,
-      CustomerVendorCode: 'string',
-      Number: 'string',
-      Series: 'string',
-      MovementTypeCode: 'string',
-      Type: 'string',
-      Date: '2026-01-30T19:51:37Z',
-    };
-    const itemFieldTypes = {
-      ProductId: 0,
-      Quantity: 0,
-      UnitPrice: 0,
-    };
-    const paymentFieldTypes = {
-      Value: 0,
-      PaymentType: 0,
-      DueDate: '2026-01-30T19:51:37Z',
-    };
-
-    const payload = {
-      InternalId: '1|2500',
-      CompanyId: 0,
-      MovementId: 0,
-      Status: 'string',
-      AplicationIntegration: 'string',
-    };
-
-    Object.entries(requestFieldConfig.header).forEach(([field, enabled]) => {
-      if (!enabled) return;
-      payload[field] = headerFieldTypes[field];
-    });
-
-    const item = {
-      CompanyId: 0,
-      MovementId: 0,
-      SequentialId: 0,
-      SequentialNumber: 0,
-      IsSubstituteProduct: 0,
-      AplicationIntegration: 'string',
-    };
-    Object.entries(requestFieldConfig.items).forEach(([field, enabled]) => {
-      if (!enabled) return;
-      item[field] = itemFieldTypes[field];
-    });
-    payload.Items = [item];
-
-    const payment = {
-      CompanyId: 0,
-      PaymentSequentialId: 0,
-      MovementId: 0,
-      DebitCredit: 'string',
-    };
-    Object.entries(requestFieldConfig.payments).forEach(([field, enabled]) => {
-      if (!enabled) return;
-      payment[field] = paymentFieldTypes[field];
-    });
-    payload.Payments = [payment];
-
-    return payload;
-  };
 
   // Stats
   const statsCards = [
@@ -285,7 +186,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       change: '+4',
       trend: 'up',
       icon: ShoppingCartIcon,
-      color: 'accent',
+      color: 'blue',
     },
     {
       title: 'Itens Críticos',
@@ -293,7 +194,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       change: '+1',
       trend: 'up',
       icon: DocumentTextIcon,
-      color: 'graphite-light',
+      color: 'blue-soft',
     },
     {
       title: 'Pedidos em Aprovação',
@@ -301,7 +202,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       change: '-2',
       trend: 'down',
       icon: UsersIcon,
-      color: 'accent-soft',
+      color: 'blue-mid',
     },
     {
       title: 'Recebimentos Hoje',
@@ -309,30 +210,185 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       change: '+2',
       trend: 'up',
       icon: ShoppingCartIcon,
-      color: 'accent',
+      color: 'blue',
     },
   ];
 
-  const tasks = [
+  const comprasTrendData = [
+    { mes: 'Set', valor: 128000, pedidos: 24 },
+    { mes: 'Out', valor: 146000, pedidos: 29 },
+    { mes: 'Nov', valor: 139000, pedidos: 27 },
+    { mes: 'Dez', valor: 162000, pedidos: 32 },
+    { mes: 'Jan', valor: 171000, pedidos: 35 },
+    { mes: 'Fev', valor: 184000, pedidos: 38 },
+  ];
+
+  const comprasCategoriaData = [
+    { categoria: 'TI', valor: 92000 },
+    { categoria: 'Serviços', valor: 58000 },
+    { categoria: 'Escritório', valor: 34000 },
+    { categoria: 'Facilities', valor: 27000 },
+    { categoria: 'Logística', valor: 22000 },
+  ];
+
+  const comprasPipelineData = [
+    { status: 'Aprovadas', quantidade: 18 },
+    { status: 'Em análise', quantidade: 11 },
+    { status: 'Cotação', quantidade: 9 },
+    { status: 'Bloqueadas', quantidade: 4 },
+  ];
+
+  const comprasChartConfig = {
+    valor: { label: 'Valor (R$)', color: '#1d4ed8' },
+    pedidos: { label: 'Pedidos', color: '#2563eb' },
+    quantidade: { label: 'Quantidade', color: '#1e40af' },
+  };
+
+  const estoqueStatsCards = [
+    { title: 'Itens em estoque', value: '4.820', change: '+3,2%', trend: 'up', icon: FolderIcon, color: 'teal' },
+    { title: 'Rupturas críticas', value: '14', change: '-2', trend: 'down', icon: ReceiptPercentIcon, color: 'teal-soft' },
+    { title: 'Cobertura média', value: '26 dias', change: '+1 dia', trend: 'up', icon: ClockIcon, color: 'teal-mid' },
+    { title: 'Inventários pendentes', value: '6', change: '+1', trend: 'up', icon: DocumentTextIcon, color: 'teal' },
+  ];
+  const estoqueNivelData = [
+    { mes: 'Set', saldo: 4180, ruptura: 22 },
+    { mes: 'Out', saldo: 4320, ruptura: 19 },
+    { mes: 'Nov', saldo: 4405, ruptura: 18 },
+    { mes: 'Dez', saldo: 4520, ruptura: 21 },
+    { mes: 'Jan', saldo: 4680, ruptura: 16 },
+    { mes: 'Fev', saldo: 4820, ruptura: 14 },
+  ];
+  const estoqueGiroData = [
+    { categoria: 'Periféricos', giro: 7.2 },
+    { categoria: 'Hardware', giro: 4.1 },
+    { categoria: 'Mobiliário', giro: 2.8 },
+    { categoria: 'Serviços', giro: 3.5 },
+    { categoria: 'Facilities', giro: 2.2 },
+  ];
+  const estoqueChartConfig = {
+    saldo: { label: 'Saldo', color: '#059669' },
+    ruptura: { label: 'Rupturas', color: '#10b981' },
+    giro: { label: 'Giro', color: '#047857' },
+  };
+  const estoqueAlertas = [
+    { sku: 'PRD-011', item: 'Hub USB', local: 'CD SP-01', saldo: '8 un', nivel: 'Crítico' },
+    { sku: 'PRD-052', item: 'Toner Original', local: 'CD RJ-02', saldo: '11 un', nivel: 'Baixo' },
+    { sku: 'PRD-008', item: 'Cabo USB-C', local: 'CD BH-03', saldo: '95 un', nivel: 'Normal' },
+    { sku: 'PRD-021', item: 'Scanner Fiscal', local: 'CD SP-01', saldo: '3 un', nivel: 'Crítico' },
+  ];
+
+  const faturamentoStatsCards = [
+    { title: 'Faturado no mês', value: 'R$ 2,34 mi', change: '+8,4%', trend: 'up', icon: ChartBarIcon, color: 'amber' },
+    { title: 'Meta atingida', value: '94%', change: '+6 p.p.', trend: 'up', icon: CheckBadgeIcon, color: 'amber-soft' },
+    { title: 'NFs emitidas', value: '1.286', change: '+92', trend: 'up', icon: ReceiptPercentIcon, color: 'amber-mid' },
+    { title: 'Devoluções', value: 'R$ 62 mil', change: '-9%', trend: 'down', icon: ArrowTrendingDownIcon, color: 'amber' },
+  ];
+  const faturamentoMensalData = [
+    { mes: 'Set', faturado: 1840000, devolucao: 98000 },
+    { mes: 'Out', faturado: 1970000, devolucao: 91000 },
+    { mes: 'Nov', faturado: 2050000, devolucao: 88000 },
+    { mes: 'Dez', faturado: 2210000, devolucao: 76000 },
+    { mes: 'Jan', faturado: 2280000, devolucao: 71000 },
+    { mes: 'Fev', faturado: 2340000, devolucao: 62000 },
+  ];
+  const faturamentoCanalData = [
+    { canal: 'Varejo', valor: 980000 },
+    { canal: 'Distribuição', valor: 760000 },
+    { canal: 'E-commerce', valor: 420000 },
+    { canal: 'Marketplace', valor: 180000 },
+  ];
+  const faturamentoChartConfig = {
+    faturado: { label: 'Faturado', color: '#d97706' },
+    devolucao: { label: 'Devolução', color: '#f59e0b' },
+    valor: { label: 'Valor', color: '#b45309' },
+  };
+  const faturamentoTitulos = [
+    { fatura: 'FT-93451', cliente: 'Rede Sigma', vencimento: '18/02/2026', valor: 'R$ 84.600,00', status: 'Aberto' },
+    { fatura: 'FT-93452', cliente: 'Grupo Brava', vencimento: '19/02/2026', valor: 'R$ 42.180,00', status: 'Pago' },
+    { fatura: 'FT-93453', cliente: 'Comercial Zeta', vencimento: '20/02/2026', valor: 'R$ 63.900,00', status: 'Aberto' },
+    { fatura: 'FT-93454', cliente: 'Lumen Serviços', vencimento: '21/02/2026', valor: 'R$ 18.400,00', status: 'Atrasado' },
+  ];
+
+  const orcamentoStatsCards = [
+    { title: 'Orçado no mês', value: 'R$ 3,12 mi', change: '+4,1%', trend: 'up', icon: ChartBarIcon, color: 'slate' },
+    { title: 'Realizado no mês', value: 'R$ 2,96 mi', change: '+6,8%', trend: 'up', icon: CheckBadgeIcon, color: 'slate-soft' },
+    { title: 'Aderência', value: '94,8%', change: '+1,3 p.p.', trend: 'up', icon: ReceiptPercentIcon, color: 'slate-mid' },
+    { title: 'Variação', value: '-R$ 160 mil', change: '-0,9%', trend: 'down', icon: ArrowTrendingDownIcon, color: 'slate' },
+  ];
+  const orcamentoTrendData = [
+    { mes: 'Set', orcado: 2550000, realizado: 2480000 },
+    { mes: 'Out', orcado: 2640000, realizado: 2590000 },
+    { mes: 'Nov', orcado: 2720000, realizado: 2680000 },
+    { mes: 'Dez', orcado: 2840000, realizado: 2760000 },
+    { mes: 'Jan', orcado: 2980000, realizado: 2890000 },
+    { mes: 'Fev', orcado: 3120000, realizado: 2960000 },
+  ];
+  const orcamentoChartConfig = {
+    orcado: { label: 'Orçado', color: '#0f766e' },
+    realizado: { label: 'Realizado', color: '#0ea5e9' },
+  };
+
+  const comprasResumoTabela = comprasCategoriaData.map((item, index) => ({
+    categoria: item.categoria,
+    valor: item.valor,
+    status: comprasPipelineData[index % comprasPipelineData.length].status,
+    pedidos: comprasPipelineData[index % comprasPipelineData.length].quantidade,
+  }));
+
+  const estoqueResumoTabela = estoqueAlertas.map((item, index) => ({
+    ...item,
+    giro: estoqueGiroData[index % estoqueGiroData.length].giro,
+  }));
+
+  const faturamentoResumoTabela = faturamentoTitulos.map((item, index) => ({
+    ...item,
+    canal: faturamentoCanalData[index % faturamentoCanalData.length].canal,
+  }));
+
+  const orcamentoResumoTabela = [
     {
-      title: 'Revisar aprovações pendentes',
-      meta: 'Hoje • Alta prioridade',
-      status: 'Em andamento',
+      codigoPeriodo: '2026-01',
+      ano: 2026,
+      mes: 'Janeiro',
+      orcado: 2980000,
+      realizado: 2890000,
+      naturezaOrcamentaria: 'Custeio',
+      centroCusto: 'Compras Corporativas',
+      receitas: 3520000,
+      despesas: 630000,
     },
     {
-      title: 'Conferir pedidos do setor comercial',
-      meta: 'Hoje • Médio',
-      status: 'Aguardando',
+      codigoPeriodo: '2026-02',
+      ano: 2026,
+      mes: 'Fevereiro',
+      orcado: 3120000,
+      realizado: 2960000,
+      naturezaOrcamentaria: 'Operacional',
+      centroCusto: 'Supply Chain',
+      receitas: 3660000,
+      despesas: 700000,
     },
     {
-      title: 'Validar notas fiscais do dia',
-      meta: 'Amanhã • Médio',
-      status: 'Planejada',
+      codigoPeriodo: '2026-03',
+      ano: 2026,
+      mes: 'Março',
+      orcado: 3200000,
+      realizado: 3050000,
+      naturezaOrcamentaria: 'Administrativa',
+      centroCusto: 'Financeiro',
+      receitas: 3780000,
+      despesas: 730000,
     },
     {
-      title: 'Atualizar relatório de status semanal',
-      meta: 'Sexta • Baixa',
-      status: 'Planejada',
+      codigoPeriodo: '2026-04',
+      ano: 2026,
+      mes: 'Abril',
+      orcado: 3280000,
+      realizado: 3175000,
+      naturezaOrcamentaria: 'Comercial',
+      centroCusto: 'Faturamento',
+      receitas: 3910000,
+      despesas: 735000,
     },
   ];
 
@@ -373,11 +429,170 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     aprovado: 'Aprovado',
     reprovado: 'Reprovado',
   };
-  const approvalColorMap = {
-    pendente: 'text-amber-600',
-    aprovado: 'text-emerald-600',
-    reprovado: 'text-red-600',
-  };
+
+  const TRAVEL_EXPENSE_ITEMS = [
+    { value: 'Hospedagem', label: 'Hospedagem' },
+    { value: 'Combustível', label: 'Combustível' },
+    { value: 'Taxi', label: 'Taxi' },
+    { value: 'Uber', label: 'Uber' },
+    { value: 'Passagem aérea', label: 'Passagem aérea' },
+    { value: 'Alimentação', label: 'Alimentação' },
+    { value: 'Pedágio', label: 'Pedágio' },
+    { value: 'Estacionamento', label: 'Estacionamento' },
+    { value: 'KM estimado', label: 'KM estimado' },
+  ];
+  const TRAVEL_TYPE_OPTIONS = [
+    {
+      value: 'Atividades administrativas',
+      label: 'Atividades administrativas',
+      description: 'Viagens administrativas internas e externas.',
+    },
+    {
+      value: 'Visitas iniciais para obras em Orçamento',
+      label: 'Visitas iniciais para obras em Orçamento',
+      description: 'Levantamentos e visitas técnicas para fase de orçamento.',
+    },
+    {
+      value: 'Manutenção em campo',
+      label: 'Manutenção em campo',
+      description: 'Atendimentos de manutenção e suporte operacional em campo.',
+    },
+  ];
+  const createTravelItemLine = () => ({ item: '', valorUnitario: '', quantidade: '' });
+
+  const createTravelDraft = () => ({
+    tipoSolicitacao: '',
+    origem: '',
+    destino: '',
+    motivo: '',
+    kmEstimado: '',
+    periodoInicio: '',
+    periodoFim: '',
+    observacao: '',
+    numeroRm: '',
+  });
+
+  const initialTravelExpenses = [
+    {
+      id: 'DV-0001',
+      tipoSolicitacao: 'Nova viagem',
+      destino: 'São Paulo/SP',
+      periodo: '10/02/2026 a 12/02/2026',
+      kmEstimado: '76,2 km',
+      numeroRm: 'RM-120045',
+      total: 'R$ 1.420,00',
+      dataPrevistaPgto: '18/02/2026',
+      status: 'Em fila de pagamento',
+      itens: ['Hospedagem', 'Uber'],
+      anexos: 2,
+    },
+    {
+      id: 'DV-0002',
+      tipoSolicitacao: 'Adiantamento para viagem',
+      destino: 'Curitiba/PR',
+      periodo: '08/02/2026 a 09/02/2026',
+      kmEstimado: '410,5 km',
+      numeroRm: 'RM-120052',
+      total: 'R$ 860,00',
+      dataPrevistaPgto: '19/02/2026',
+      status: 'Viagem em andamento',
+      itens: ['Combustível', 'Pedágio', 'Alimentação'],
+      anexos: 1,
+    },
+    {
+      id: 'DV-0003',
+      tipoSolicitacao: 'Nova viagem',
+      destino: 'Rio de Janeiro/RJ',
+      periodo: '05/02/2026 a 07/02/2026',
+      kmEstimado: '72,8 km',
+      numeroRm: '',
+      total: 'R$ 1.980,00',
+      dataPrevistaPgto: '--',
+      status: 'Aguardando integração',
+      itens: ['Passagem aérea', 'Hospedagem', 'Uber'],
+      anexos: 0,
+    },
+    {
+      id: 'DV-0004',
+      tipoSolicitacao: 'Adiantamento para viagem',
+      destino: 'Belo Horizonte/MG',
+      periodo: '14/02/2026 a 16/02/2026',
+      kmEstimado: '586,4 km',
+      numeroRm: 'RM-120063',
+      total: 'R$ 1.150,00',
+      dataPrevistaPgto: '23/02/2026',
+      status: 'Aprovada',
+      itens: ['Combustível', 'Pedágio', 'Hospedagem'],
+      anexos: 3,
+    },
+    {
+      id: 'DV-0005',
+      tipoSolicitacao: 'Nova viagem',
+      destino: 'Campinas/SP',
+      periodo: '17/02/2026 a 18/02/2026',
+      kmEstimado: '175,2 km',
+      numeroRm: 'RM-120071',
+      total: 'R$ 740,00',
+      dataPrevistaPgto: '25/02/2026',
+      status: 'Em fila de pagamento',
+      itens: ['Uber', 'Alimentação'],
+      anexos: 1,
+    },
+    {
+      id: 'DV-0006',
+      tipoSolicitacao: 'Nova viagem',
+      destino: 'Sorocaba/SP',
+      periodo: '20/02/2026 a 20/02/2026',
+      kmEstimado: '112,0 km',
+      numeroRm: '',
+      total: 'R$ 420,00',
+      dataPrevistaPgto: '--',
+      status: 'Aguardando integração',
+      itens: ['Combustível', 'Estacionamento'],
+      anexos: 0,
+    },
+    {
+      id: 'DV-0007',
+      tipoSolicitacao: 'Adiantamento para viagem',
+      destino: 'Joinville/SC',
+      periodo: '11/02/2026 a 13/02/2026',
+      kmEstimado: '534,7 km',
+      numeroRm: 'RM-120059',
+      total: 'R$ 1.630,00',
+      dataPrevistaPgto: '21/02/2026',
+      status: 'Viagem em andamento',
+      itens: ['Passagem aérea', 'Hospedagem', 'Taxi'],
+      anexos: 2,
+    },
+    {
+      id: 'DV-0008',
+      tipoSolicitacao: 'Nova viagem',
+      destino: 'São José dos Campos/SP',
+      periodo: '02/02/2026 a 03/02/2026',
+      kmEstimado: '96,3 km',
+      numeroRm: 'RM-120031',
+      total: 'R$ 690,00',
+      dataPrevistaPgto: '12/02/2026',
+      pgtoRealizadoEm: '12/02/2026',
+      status: 'Finalizada',
+      itens: ['Combustível', 'Pedágio', 'Alimentação'],
+      anexos: 2,
+    },
+    {
+      id: 'DV-0009',
+      tipoSolicitacao: 'Adiantamento para viagem',
+      destino: 'Ribeirão Preto/SP',
+      periodo: '28/01/2026 a 30/01/2026',
+      kmEstimado: '320,1 km',
+      numeroRm: 'RM-119998',
+      total: 'R$ 1.240,00',
+      dataPrevistaPgto: '10/02/2026',
+      pgtoRealizadoEm: '11/02/2026',
+      status: 'Finalizada',
+      itens: ['Hospedagem', 'Uber', 'Alimentação'],
+      anexos: 3,
+    },
+  ];
 
   const pedidosData = [
     {
@@ -582,10 +797,117 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const [approvalProcessing, setApprovalProcessing] = useState(false);
   const [approvalProgress, setApprovalProgress] = useState(0);
   const [approvalResult, setApprovalResult] = useState('');
-  const [approvalInfoId, setApprovalInfoId] = useState(null);
+  const [approvalSearch, setApprovalSearch] = useState('');
+  const [travelExpenses, setTravelExpenses] = useState(initialTravelExpenses);
+  const [selectedTravelExpenseId, setSelectedTravelExpenseId] = useState(initialTravelExpenses[0]?.id || null);
+  const [travelReportDialogOpen, setTravelReportDialogOpen] = useState(false);
+  const [travelReportMapDialogOpen, setTravelReportMapDialogOpen] = useState(false);
+  const [travelDialogOpen, setTravelDialogOpen] = useState(false);
+  const [travelMapDialogOpen, setTravelMapDialogOpen] = useState(false);
+  const [travelRateioEnabled, setTravelRateioEnabled] = useState(false);
+  const [travelRateioDialogOpen, setTravelRateioDialogOpen] = useState(false);
+  const [travelRateioLines, setTravelRateioLines] = useState([{ centroCusto: '', percentual: '', valor: '' }]);
+  const [travelRateioError, setTravelRateioError] = useState('');
+  const [travelPendingSubmission, setTravelPendingSubmission] = useState(null);
+  const [travelDraft, setTravelDraft] = useState(createTravelDraft);
+  const [travelItems, setTravelItems] = useState([createTravelItemLine()]);
+  const [travelItemAttachments, setTravelItemAttachments] = useState({});
+  const [travelAttachmentTargetItem, setTravelAttachmentTargetItem] = useState('');
+  const [travelIntegrating, setTravelIntegrating] = useState(false);
+  const [travelKmLoading, setTravelKmLoading] = useState(false);
+  const [travelKmError, setTravelKmError] = useState('');
+  const [travelRoundTrip, setTravelRoundTrip] = useState(false);
+  const [travelTollLoading, setTravelTollLoading] = useState(false);
+  const [travelTollEstimated, setTravelTollEstimated] = useState('');
+  const [travelTollError, setTravelTollError] = useState('');
+  const [travelMapsConfigMissing, setTravelMapsConfigMissing] = useState(false);
+  const [travelSaving, setTravelSaving] = useState(false);
+  const [travelUploadError, setTravelUploadError] = useState('');
+  const [travelFormError, setTravelFormError] = useState('');
+  const [travelOriginSuggestions, setTravelOriginSuggestions] = useState([]);
+  const [travelDestinationSuggestions, setTravelDestinationSuggestions] = useState([]);
+  const [travelAutocompleteLoading, setTravelAutocompleteLoading] = useState({
+    origem: false,
+    destino: false,
+  });
+  const [travelAutocompleteError, setTravelAutocompleteError] = useState('');
+  const travelAutocompleteTimers = React.useRef({ origem: null, destino: null });
+  const travelAutocompleteRequestSeq = React.useRef({ origem: 0, destino: 0 });
+  const travelKmAutoTimer = React.useRef(null);
+  const lastTravelKmQuery = React.useRef('');
+  const travelItemFileInputRef = React.useRef(null);
+  const [integrationConfig, setIntegrationConfig] = useState(() => getRuntimeConfig());
+  const [integrationConfigSaving, setIntegrationConfigSaving] = useState(false);
+  const [integrationConfigStatus, setIntegrationConfigStatus] = useState('');
+  const [integrationConfigError, setIntegrationConfigError] = useState('');
+  const [showGoogleApiKey, setShowGoogleApiKey] = useState(false);
+  const travelRouteMap = React.useMemo(() => {
+    const origin = travelDraft.origem?.trim();
+    const destination = travelDraft.destino?.trim();
+    if (!origin || !destination) {
+      return { embedUrl: '', externalUrl: '' };
+    }
+
+    const encodedOrigin = encodeURIComponent(origin);
+    const encodedDestination = encodeURIComponent(destination);
+
+    return {
+      embedUrl: `https://www.google.com/maps?output=embed&saddr=${encodedOrigin}&daddr=${encodedDestination}`,
+      externalUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodedOrigin}&destination=${encodedDestination}&travelmode=driving`,
+    };
+  }, [travelDraft.origem, travelDraft.destino]);
+  const canOpenTravelMap = Boolean(travelDraft.origem?.trim() && travelDraft.destino?.trim());
+  const travelRateioTotalPercent = travelRateioLines.reduce(
+    (sum, line) => sum + (Number(line.percentual) || 0),
+    0
+  );
+  const travelRateioValidLines = travelRateioLines.filter(
+    (line) => line.centroCusto && Number(line.percentual) > 0
+  );
+  const canSaveTravelRateio =
+    travelRateioValidLines.length > 0 && Math.abs(travelRateioTotalPercent - 100) <= 0.01;
+  const toNumber = (value) => {
+    if (value === null || value === undefined) return 0;
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const normalized = String(value).trim().replace(/\./g, '').replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const parseCurrencyAmount = (value) => {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const normalized = String(value || '')
+      .replace(/[^\d,.-]/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  const getTravelItemLineTotal = (entry) =>
+    (Number(entry.quantidade) || 0) * (Number(entry.valorUnitario) || 0);
+  const travelItemsTotal = React.useMemo(
+    () => travelItems.reduce((sum, entry) => sum + getTravelItemLineTotal(entry), 0),
+    [travelItems]
+  );
+  const hasEstimatedKmItem = travelItems.some((entry) => entry.item === 'KM estimado');
+  const hasEstimatedTollItem = travelItems.some((entry) => entry.item === 'Pedágio');
+  const disableEstimatedInsertButtons = hasEstimatedKmItem && hasEstimatedTollItem;
+  const travelRateioTotalValue = React.useMemo(() => {
+    const baseTotal = Number(travelPendingSubmission?.totalValue || 0);
+    return travelRateioLines.reduce(
+      (sum, line) => sum + (baseTotal * (Number(line.percentual) || 0)) / 100,
+      0
+    );
+  }, [travelPendingSubmission?.totalValue, travelRateioLines]);
+  const travelRateioPercentDifference = 100 - travelRateioTotalPercent;
+  const travelRateioValueDifference = Number(travelPendingSubmission?.totalValue || 0) - travelRateioTotalValue;
+  const hasInvalidTravelDateRange =
+    Boolean(travelDraft.periodoInicio) &&
+    Boolean(travelDraft.periodoFim) &&
+    travelDraft.periodoFim < travelDraft.periodoInicio;
+
   const normalizePage = (page) => {
     if (!page) return 'dashboard';
-    if (page.startsWith('dashboard-')) return 'dashboard';
+    if (page.startsWith('dashboard-')) return page;
     if (page.startsWith('pedidos-')) return 'pedidos';
     return page;
   };
@@ -608,6 +930,37 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   ];
 
   useEffect(() => {
+    if (normalizedPage !== 'configuracoes') return;
+
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) return;
+
+    const localConfig = getRuntimeConfig();
+    fetch(`${localConfig.backendBaseUrl}/api/admin/runtime-config`, {
+      headers: {
+        Authorization: `Bearer ${sessionToken}`,
+      },
+    })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null);
+        if (!response.ok) {
+          throw new Error(payload?.message || 'Não foi possível carregar configurações do backend.');
+        }
+        return payload;
+      })
+      .then((payload) => {
+        setIntegrationConfig((prev) => ({
+          ...prev,
+          ...payload,
+          backendBaseUrl: localConfig.backendBaseUrl,
+        }));
+      })
+      .catch(() => {
+        // Mantém configuração local se backend não responder.
+      });
+  }, [normalizedPage]);
+
+  useEffect(() => {
     if (pedidoSelecionado?.itens?.length) {
       setItemSelecionado(pedidoSelecionado.itens[0].sku);
     }
@@ -617,7 +970,16 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     if (normalizedPage === 'tarefas' && !approvalSelected) {
       setApprovalSelected(approvalPedidos[0]);
     }
-  }, [normalizedPage, approvalSelected]);
+  }, [normalizedPage, approvalSelected, approvalPedidos]);
+
+  useEffect(() => {
+    if (normalizedPage !== 'despesas-viagens') return;
+    if (!travelExpenses.length) return;
+    const stillExists = travelExpenses.some((row) => row.id === selectedTravelExpenseId);
+    if (!stillExists) {
+      setSelectedTravelExpenseId(travelExpenses[0].id);
+    }
+  }, [normalizedPage, travelExpenses, selectedTravelExpenseId]);
 
   const pedidosFiltrados = pedidosData
     .filter((pedido) => {
@@ -837,9 +1199,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   };
 
   const handleSaveRequest = () => {
-    const usuario = user?.username || localStorage.getItem('username') || '';
-    const codColigada = 0;
-    const parameters = `usuario=${usuario};codcoligada=1`;
     setRequestSaving(true);
     setRequestProgress(0);
     const interval = setInterval(() => {
@@ -856,12 +1215,689 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     }, 300);
   };
 
+  const resetTravelDraft = () => {
+    Object.values(travelAutocompleteTimers.current).forEach((timerId) => {
+      if (timerId) clearTimeout(timerId);
+    });
+    travelAutocompleteTimers.current = { origem: null, destino: null };
+    if (travelKmAutoTimer.current) clearTimeout(travelKmAutoTimer.current);
+    travelKmAutoTimer.current = null;
+    lastTravelKmQuery.current = '';
+    setTravelDraft(createTravelDraft());
+    setTravelItems([createTravelItemLine()]);
+    setTravelItemAttachments({});
+    setTravelAttachmentTargetItem('');
+    setTravelIntegrating(false);
+    setTravelKmLoading(false);
+    setTravelKmError('');
+    setTravelRoundTrip(false);
+    setTravelTollLoading(false);
+    setTravelTollEstimated('');
+    setTravelTollError('');
+    setTravelMapsConfigMissing(false);
+    setTravelSaving(false);
+    setTravelUploadError('');
+    setTravelFormError('');
+    setTravelOriginSuggestions([]);
+    setTravelDestinationSuggestions([]);
+    setTravelAutocompleteLoading({ origem: false, destino: false });
+    setTravelAutocompleteError('');
+    setTravelMapDialogOpen(false);
+    setTravelRateioEnabled(false);
+    setTravelRateioDialogOpen(false);
+    setTravelRateioLines([{ centroCusto: '', percentual: '', valor: '' }]);
+    setTravelRateioError('');
+    setTravelPendingSubmission(null);
+  };
+
+  const handleOpenTravelDialog = () => {
+    resetTravelDraft();
+    loadRequestLookups();
+    setTravelDialogOpen(true);
+  };
+
+  const handleSelectTravelType = (type) => {
+    setTravelDraft((prev) => ({ ...prev, tipoSolicitacao: type }));
+  };
+
+  const handleAddTravelItem = () => {
+    setTravelItems((prev) => [...prev, createTravelItemLine()]);
+  };
+
+  const handleRemoveTravelItem = (index) => {
+    setTravelItems((prev) => {
+      if (prev.length === 1) return prev;
+      const removedItem = prev[index]?.item;
+      if (removedItem) {
+        setTravelItemAttachments((current) => {
+          const next = { ...current };
+          delete next[removedItem];
+          return next;
+        });
+      }
+      return prev.filter((_, idx) => idx !== index);
+    });
+  };
+
+  const handleTravelItemChange = (index, field, value) => {
+    setTravelFormError('');
+    setTravelItems((prev) =>
+      prev.map((entry, idx) => {
+        if (idx !== index) return entry;
+        const nextEntry = { ...entry, [field]: value };
+        if (field === 'item' && entry.item && entry.item !== value) {
+          setTravelItemAttachments((current) => {
+            const next = { ...current };
+            delete next[entry.item];
+            return next;
+          });
+        }
+        return nextEntry;
+      })
+    );
+  };
+
+  const handleOpenTravelItemAttachment = (itemName) => {
+    if (!itemName || itemName === 'KM estimado') return;
+    setTravelAttachmentTargetItem(itemName);
+    travelItemFileInputRef.current?.click();
+  };
+
+  const handleTravelItemAttachmentUpload = (event) => {
+    const files = Array.from(event.target.files || []);
+    if (!travelAttachmentTargetItem || files.length === 0) return;
+    setTravelUploadError('');
+    setTravelItemAttachments((prev) => ({
+      ...prev,
+      [travelAttachmentTargetItem]: [...(prev[travelAttachmentTargetItem] || []), ...files],
+    }));
+    event.target.value = '';
+  };
+
+  const handleRemoveTravelItemAttachment = (itemName, fileIndex) => {
+    setTravelItemAttachments((prev) => {
+      const current = prev[itemName] || [];
+      const nextFiles = current.filter((_, idx) => idx !== fileIndex);
+      const next = { ...prev };
+      if (nextFiles.length === 0) {
+        delete next[itemName];
+      } else {
+        next[itemName] = nextFiles;
+      }
+      return next;
+    });
+  };
+
+  const handleIncludeEstimatedKmItem = () => {
+    const km = toNumber(travelDraft.kmEstimado);
+    if (km <= 0) {
+      setTravelKmError('Calcule o KM estimado antes de incluir esse item.');
+      return;
+    }
+    setTravelKmError('');
+    setTravelItems((prev) => {
+      const index = prev.findIndex((entry) => entry.item === 'KM estimado');
+      const kmAsText = km.toFixed(2);
+      if (index >= 0) {
+        return prev.map((entry, idx) =>
+          idx === index ? { ...entry, item: 'KM estimado', quantidade: kmAsText, valorUnitario: '1' } : entry
+        );
+      }
+      return [...prev, { item: 'KM estimado', quantidade: kmAsText, valorUnitario: '1' }];
+    });
+  };
+
+  const handleIncludeEstimatedTollItem = () => {
+    const tollAmount = parseCurrencyAmount(travelTollEstimated);
+    if (tollAmount <= 0) {
+      setTravelTollError('Calcule o pedágio estimado antes de incluir esse item.');
+      return;
+    }
+    setTravelTollError('');
+    setTravelItems((prev) => {
+      const index = prev.findIndex((entry) => entry.item === 'Pedágio');
+      const tollAsText = tollAmount.toFixed(2);
+      if (index >= 0) {
+        return prev.map((entry, idx) =>
+          idx === index ? { ...entry, item: 'Pedágio', quantidade: '1', valorUnitario: tollAsText } : entry
+        );
+      }
+      return [...prev, { item: 'Pedágio', quantidade: '1', valorUnitario: tollAsText }];
+    });
+  };
+
+  const handleTravelDraftChange = (field, value) => {
+    setTravelDraft((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === 'origem' || field === 'destino') {
+        next.kmEstimado = '';
+      }
+      if (field === 'periodoInicio' && next.periodoFim && next.periodoFim < value) {
+        next.periodoFim = '';
+      }
+      return next;
+    });
+    if (field === 'periodoInicio' || field === 'periodoFim' || field === 'motivo') {
+      setTravelFormError('');
+    }
+    if (field === 'origem' || field === 'destino') {
+      setTravelFormError('');
+      setTravelKmError('');
+      setTravelTollEstimated('');
+      setTravelTollError('');
+      setTravelAutocompleteError('');
+      const suggestionsSetter =
+        field === 'origem' ? setTravelOriginSuggestions : setTravelDestinationSuggestions;
+
+      if (!value || value.trim().length < 3) {
+        suggestionsSetter([]);
+        setTravelAutocompleteLoading((prev) => ({ ...prev, [field]: false }));
+        return;
+      }
+
+      if (travelAutocompleteTimers.current[field]) {
+        clearTimeout(travelAutocompleteTimers.current[field]);
+      }
+
+      travelAutocompleteTimers.current[field] = setTimeout(async () => {
+        const requestId = (travelAutocompleteRequestSeq.current[field] || 0) + 1;
+        travelAutocompleteRequestSeq.current[field] = requestId;
+        setTravelAutocompleteLoading((prev) => ({ ...prev, [field]: true }));
+        try {
+          const suggestions = await getPlaceSuggestions(value);
+          if (travelAutocompleteRequestSeq.current[field] !== requestId) {
+            return;
+          }
+          suggestionsSetter(suggestions);
+        } catch (error) {
+          if (travelAutocompleteRequestSeq.current[field] !== requestId) {
+            return;
+          }
+          const message = error?.message || 'Falha ao buscar sugestões de endereço.';
+          if (message.includes('GOOGLE_MAPS_API_KEY')) {
+            setTravelMapsConfigMissing(true);
+            setTravelAutocompleteError('Autocomplete indisponível: configure a chave Google em Configurações.');
+          } else {
+            setTravelAutocompleteError(message);
+          }
+          suggestionsSetter([]);
+        } finally {
+          if (travelAutocompleteRequestSeq.current[field] === requestId) {
+            setTravelAutocompleteLoading((prev) => ({ ...prev, [field]: false }));
+          }
+        }
+      }, 280);
+    }
+  };
+
+  const handleSelectTravelSuggestion = async (field, suggestion) => {
+    const selectedText = suggestion?.text || '';
+    if (!selectedText) return;
+
+    setTravelDraft((prev) => {
+      const next = { ...prev, [field]: selectedText };
+      if (field === 'origem' || field === 'destino') {
+        next.kmEstimado = '';
+      }
+      return next;
+    });
+
+    if (field === 'origem') {
+      setTravelOriginSuggestions([]);
+    } else {
+      setTravelDestinationSuggestions([]);
+    }
+    setTravelAutocompleteError('');
+    setTravelKmError('');
+    setTravelTollError('');
+
+    const origin = field === 'origem' ? selectedText : travelDraft.origem;
+    const destination = field === 'destino' ? selectedText : travelDraft.destino;
+    if (origin && destination) {
+      await handleCalculateTravelKm(origin, destination);
+    }
+  };
+
+  const handleCalculateTravelKm = React.useCallback(async (originOverride, destinationOverride) => {
+    const origin = originOverride || travelDraft.origem;
+    const destination = destinationOverride || travelDraft.destino;
+    if (!origin || !destination) {
+      setTravelKmError('Informe origem e destino para calcular o KM estimado.');
+      return;
+    }
+    setTravelKmLoading(true);
+    setTravelKmError('');
+    try {
+      const estimate = await getTravelRouteEstimate({
+        origin,
+        destination,
+        roundTrip: travelRoundTrip,
+        includeTolls: false,
+      });
+      setTravelMapsConfigMissing(false);
+      setTravelDraft((prev) => ({
+        ...prev,
+        kmEstimado: estimate.distanceKm.toString().replace('.', ','),
+      }));
+    } catch (error) {
+      const message = error?.message || 'Falha ao calcular KM estimado.';
+      if (message.includes('GOOGLE_MAPS_API_KEY')) {
+        setTravelMapsConfigMissing(true);
+        setTravelKmError('Integração de mapa não configurada. Defina a chave Google em Configurações.');
+      } else {
+        setTravelKmError(message);
+      }
+    } finally {
+      setTravelKmLoading(false);
+    }
+  }, [travelDraft.origem, travelDraft.destino, travelRoundTrip]);
+
+  const handleCalculateEstimatedToll = async () => {
+    const origin = travelDraft.origem;
+    const destination = travelDraft.destino;
+    if (!origin || !destination) {
+      setTravelTollError('Informe origem e destino para calcular o pedágio estimado.');
+      return;
+    }
+
+    setTravelTollLoading(true);
+    setTravelTollError('');
+    try {
+      const estimate = await getTravelRouteEstimate({
+        origin,
+        destination,
+        roundTrip: travelRoundTrip,
+        includeTolls: true,
+      });
+      setTravelMapsConfigMissing(false);
+      setTravelDraft((prev) => ({
+        ...prev,
+        kmEstimado: estimate.distanceKm.toString().replace('.', ','),
+      }));
+      if (estimate.tollAmount === null || estimate.tollAmount === undefined) {
+        setTravelTollEstimated('Sem valor disponível para esta rota');
+      } else {
+        const currency = estimate.tollCurrency || 'BRL';
+        const formatted = new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency,
+        }).format(Number(estimate.tollAmount));
+        setTravelTollEstimated(formatted);
+      }
+    } catch (error) {
+      const message = error?.message || 'Falha ao calcular pedágio estimado.';
+      if (message.includes('GOOGLE_MAPS_API_KEY')) {
+        setTravelMapsConfigMissing(true);
+        setTravelTollError('Integração de mapa não configurada. Defina a chave Google em Configurações.');
+      } else {
+        setTravelTollError(message);
+      }
+    } finally {
+      setTravelTollLoading(false);
+    }
+  };
+
+  const handleOpenTravelMap = () => {
+    if (!canOpenTravelMap) {
+      setTravelKmError('Preencha origem e destino para visualizar o mapa.');
+      return;
+    }
+    setTravelKmError('');
+    setTravelMapDialogOpen(true);
+  };
+
+  useEffect(() => {
+    const origem = travelDraft.origem?.trim();
+    const destino = travelDraft.destino?.trim();
+    if (!origem || !destino || origem.length < 3 || destino.length < 3) {
+      return;
+    }
+
+    const queryKey = `${origem}::${destino}::${travelRoundTrip ? 'rt' : 'ow'}`;
+    if (lastTravelKmQuery.current === queryKey) {
+      return;
+    }
+
+    if (travelKmAutoTimer.current) {
+      clearTimeout(travelKmAutoTimer.current);
+    }
+
+    travelKmAutoTimer.current = setTimeout(() => {
+      handleCalculateTravelKm(origem, destino).then(() => {
+        lastTravelKmQuery.current = queryKey;
+      });
+    }, 700);
+
+    return () => {
+      if (travelKmAutoTimer.current) {
+        clearTimeout(travelKmAutoTimer.current);
+      }
+    };
+  }, [travelDraft.origem, travelDraft.destino, travelRoundTrip, handleCalculateTravelKm]);
+
+  const handleIntegrateTravelWithRm = () => {
+    if (
+      !travelDraft.tipoSolicitacao ||
+      !travelDraft.origem ||
+      !travelDraft.destino ||
+      (!travelRateioEnabled && !travelDraft.motivo) ||
+      !travelDraft.periodoInicio ||
+      !travelDraft.periodoFim ||
+      travelDraft.periodoFim < travelDraft.periodoInicio
+    ) {
+      setTravelFormError('Revise os campos obrigatórios e o período da viagem.');
+      return;
+    }
+    setTravelFormError('');
+    setTravelIntegrating(true);
+    setTimeout(() => {
+      const rmNumber = `RM-${Math.floor(100000 + Math.random() * 899999)}`;
+      setTravelDraft((prev) => ({ ...prev, numeroRm: rmNumber }));
+      setTravelIntegrating(false);
+    }, 900);
+  };
+
+  const validateTravelFormBeforeSave = () => {
+    if (!travelDraft.tipoSolicitacao) {
+      setTravelFormError('Selecione o tipo da solicitação.');
+      return null;
+    }
+    if (!travelDraft.origem || !travelDraft.destino) {
+      setTravelFormError('Preencha origem e destino.');
+      return null;
+    }
+    if (!travelRateioEnabled && !travelDraft.motivo) {
+      setTravelFormError('Informe o centro de custo.');
+      return null;
+    }
+    if (!travelDraft.periodoInicio || !travelDraft.periodoFim) {
+      setTravelFormError('Preencha as datas de início e fim.');
+      return null;
+    }
+    if (travelDraft.periodoFim < travelDraft.periodoInicio) {
+      setTravelFormError('A data fim não pode ser menor que a data início.');
+      return null;
+    }
+
+    const completeItems = travelItems.filter(
+      (entry) => entry.item && Number(entry.valorUnitario) > 0 && Number(entry.quantidade) > 0
+    );
+    const selectedItems = completeItems.map((entry) => entry.item);
+    if (selectedItems.length === 0) {
+      setTravelFormError('Informe ao menos um item com valor unitário e quantidade.');
+      return null;
+    }
+    if (completeItems.length !== travelItems.filter((entry) => entry.item).length) {
+      setTravelFormError('Complete valor unitário e quantidade de todos os itens selecionados.');
+      return null;
+    }
+
+    const totalValue = travelItems.reduce((sum, entry) => sum + getTravelItemLineTotal(entry), 0);
+    setTravelFormError('');
+    return { selectedItems, totalValue };
+  };
+
+  const saveTravelExpense = async ({ selectedItems, totalValue, rateio = [] }) => {
+    setTravelSaving(true);
+    setTravelUploadError('');
+
+    const filesByItem = Object.entries(travelItemAttachments).reduce((acc, [itemName, files]) => {
+      if (itemName && Array.isArray(files) && files.length > 0) {
+        acc[itemName] = files;
+      }
+      return acc;
+    }, {});
+    const allFiles = Object.values(filesByItem).flat();
+
+    let uploadedFiles = [];
+    try {
+      uploadedFiles = allFiles.length > 0 ? await uploadFiles(allFiles) : [];
+    } catch (error) {
+      setTravelUploadError(error?.message || 'Falha ao enviar anexos.');
+      setTravelSaving(false);
+      return;
+    }
+
+    const nextIdNumber = travelExpenses.length + 1;
+    const endDate = travelDraft.periodoFim ? new Date(`${travelDraft.periodoFim}T00:00:00`) : new Date();
+    const paymentDate = new Date(endDate);
+    paymentDate.setDate(paymentDate.getDate() + 7);
+    const dataPrevistaPgto = travelDraft.numeroRm ? paymentDate.toLocaleDateString('pt-BR') : '--';
+    const newExpense = {
+      id: `DV-${String(nextIdNumber).padStart(4, '0')}`,
+      tipoSolicitacao: travelDraft.tipoSolicitacao,
+      origem: travelDraft.origem,
+      destino: travelDraft.destino,
+      motivo: travelDraft.motivo,
+      centroCusto: rateio.length > 0 ? 'Rateado' : travelDraft.motivo,
+      periodo: `${travelDraft.periodoInicio} a ${travelDraft.periodoFim}`,
+      kmEstimado: travelDraft.kmEstimado ? `${travelDraft.kmEstimado} km` : 'Não calculado',
+      numeroRm: travelDraft.numeroRm,
+      total: `R$ ${totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      dataPrevistaPgto,
+      pgtoRealizadoEm: '--',
+      status: travelDraft.numeroRm ? 'Em fila de pagamento' : 'Aguardando integração',
+      itens: selectedItems,
+      itensDetalhes: travelItems
+        .filter((entry) => entry.item)
+        .map((entry) => ({
+          item: entry.item,
+          quantidade: Number(entry.quantidade) || 0,
+          valorUnitario: Number(entry.valorUnitario) || 0,
+          total: getTravelItemLineTotal(entry),
+        })),
+      anexosPorItem: Object.entries(filesByItem).map(([item, files]) => ({
+        item,
+        arquivos: files.map((file) => file.name),
+      })),
+      rateio,
+      anexos: uploadedFiles.length,
+    };
+
+    setTravelExpenses((prev) => [newExpense, ...prev]);
+    setTravelDialogOpen(false);
+    setTravelRateioDialogOpen(false);
+    resetTravelDraft();
+    setTravelSaving(false);
+  };
+
+  const handleAddTravelRateioLine = () => {
+    setTravelRateioLines((prev) => [...prev, { centroCusto: '', percentual: '', valor: '' }]);
+  };
+
+  const handleRemoveTravelRateioLine = (index) => {
+    setTravelRateioLines((prev) => {
+      if (prev.length === 1) return prev;
+      return prev.filter((_, idx) => idx !== index);
+    });
+  };
+
+  const handleTravelRateioLineChange = (index, field, value) => {
+    setTravelRateioError('');
+    const baseTotal = Number(travelPendingSubmission?.totalValue || 0);
+    setTravelRateioLines((prev) =>
+      prev.map((line, idx) => {
+        if (idx !== index) return line;
+        if (field === 'centroCusto') {
+          return { ...line, centroCusto: value };
+        }
+        if (field === 'percentual') {
+          const percentual = toNumber(value);
+          const valor = baseTotal > 0 ? (baseTotal * percentual) / 100 : 0;
+          return {
+            ...line,
+            percentual: value,
+            valor: valor ? valor.toFixed(2) : '',
+          };
+        }
+        if (field === 'valor') {
+          const valor = toNumber(value);
+          const percentual = baseTotal > 0 ? (valor / baseTotal) * 100 : 0;
+          return {
+            ...line,
+            valor: value,
+            percentual: percentual ? percentual.toFixed(2) : '',
+          };
+        }
+        return { ...line, [field]: value };
+      })
+    );
+  };
+
+  const handleSaveTravel = async () => {
+    const prepared = validateTravelFormBeforeSave();
+    if (!prepared) {
+      return;
+    }
+
+    if (travelRateioEnabled) {
+      setTravelPendingSubmission(prepared);
+      setTravelRateioError('');
+      setTravelRateioLines((prev) => {
+        if (prev.length > 0 && prev.some((line) => line.centroCusto || line.percentual)) {
+          return prev;
+        }
+        return [{ centroCusto: travelDraft.motivo || '', percentual: '100', valor: prepared.totalValue.toFixed(2) }];
+      });
+      setTravelDialogOpen(false);
+      setTravelRateioDialogOpen(true);
+      return;
+    }
+
+    await saveTravelExpense({ ...prepared, rateio: [] });
+  };
+
+  const handleProceedToTravelRateio = () => {
+    const prepared = validateTravelFormBeforeSave();
+    if (!prepared) {
+      return;
+    }
+    setTravelPendingSubmission(prepared);
+    setTravelRateioError('');
+    setTravelRateioLines((prev) => {
+      if (prev.length > 0 && prev.some((line) => line.centroCusto || line.percentual)) {
+        return prev;
+      }
+      return [{ centroCusto: '', percentual: '', valor: '' }];
+    });
+    setTravelDialogOpen(false);
+    setTravelRateioDialogOpen(true);
+  };
+
+  const handleConfirmTravelRateio = async () => {
+    if (!travelPendingSubmission) {
+      setTravelRateioError('Não há uma solicitação pendente para rateio.');
+      return;
+    }
+
+    const validLines = travelRateioLines.filter(
+      (line) => line.centroCusto && Number(line.percentual) > 0
+    );
+    if (validLines.length === 0) {
+      setTravelRateioError('Informe ao menos um centro de custo com percentual.');
+      return;
+    }
+
+    if (Math.abs(travelRateioTotalPercent - 100) > 0.01) {
+      setTravelRateioError('O rateio deve totalizar exatamente 100%.');
+      return;
+    }
+
+    const totalValue = Number(travelPendingSubmission.totalValue || 0);
+    const rateio = validLines.map((line) => {
+      const percentual = Number(line.percentual) || 0;
+      const valor = (totalValue * percentual) / 100;
+      return {
+        centroCusto: line.centroCusto,
+        percentual,
+        valor,
+      };
+    });
+
+    await saveTravelExpense({ ...travelPendingSubmission, rateio });
+  };
+
+  const handleIntegrationConfigChange = (field, value) => {
+    setIntegrationConfig((prev) => ({ ...prev, [field]: value }));
+    setIntegrationConfigStatus('');
+    setIntegrationConfigError('');
+  };
+
+  const handleSaveIntegrationConfig = async () => {
+    setIntegrationConfigSaving(true);
+    setIntegrationConfigStatus('');
+    setIntegrationConfigError('');
+
+    const storedConfig = saveRuntimeConfig(integrationConfig);
+    setIntegrationConfig(storedConfig);
+
+    const sessionToken = localStorage.getItem('session_token');
+    if (!sessionToken) {
+      setIntegrationConfigSaving(false);
+      setIntegrationConfigStatus('Configuração local salva. Faça login novamente para sincronizar no backend.');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${storedConfig.backendBaseUrl}/api/admin/runtime-config`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({
+          rmApiBaseUrl: storedConfig.rmApiBaseUrl,
+          rmAuthUsersPath: storedConfig.rmAuthUsersPath,
+          rmConsultaBasePath: storedConfig.rmConsultaBasePath,
+          googleMapsApiKey: storedConfig.googleMapsApiKey,
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Falha ao sincronizar configurações no backend.');
+      }
+
+      setIntegrationConfigStatus('Configurações salvas e sincronizadas com o backend.');
+    } catch (error) {
+      setIntegrationConfigError(
+        error?.message || 'Configuração local salva, mas não foi possível sincronizar no backend.'
+      );
+    } finally {
+      setIntegrationConfigSaving(false);
+    }
+  };
+
   const formatDate = (date) => (date ? date.toLocaleDateString('pt-BR') : 'Selecione...');
 
   const coverByPage = {
     dashboard: {
       title: 'Painel Geral',
       description: 'Resumo Operacional',
+      status: 'Ativo',
+      owner: 'Controladoria',
+    },
+    'dashboard-compras': {
+      title: 'Dashboard - Compras',
+      description: 'Indicadores de pedidos, aprovações e gastos.',
+      status: 'Ativo',
+      owner: 'Compras',
+    },
+    'dashboard-estoque': {
+      title: 'Dashboard - Estoque',
+      description: 'Níveis de saldo, rupturas e giro por categoria.',
+      status: 'Ativo',
+      owner: 'Supply',
+    },
+    'dashboard-faturamento': {
+      title: 'Dashboard - Faturamento',
+      description: 'Evolução de receita, devoluções e títulos.',
+      status: 'Ativo',
+      owner: 'Financeiro',
+    },
+    'dashboard-orcamento': {
+      title: 'Dashboard - Orçamento',
+      description: 'Visão comparativa entre orçado e realizado.',
       status: 'Ativo',
       owner: 'Controladoria',
     },
@@ -882,6 +1918,12 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       description: 'Controle fiscal e validações.',
       status: 'Em dia',
       owner: 'Fiscal',
+    },
+    'despesas-viagens': {
+      title: 'Despesas com Viagens',
+      description: 'Controle de gastos de deslocamento e prestação de contas.',
+      status: 'Em revisão',
+      owner: 'Financeiro',
     },
     relatorios: {
       title: 'Relatórios',
@@ -1046,12 +2088,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     { relatorio: 'Consolidação 1', periodicidade: 'Mensal', status: 'Atualizado' },
     { relatorio: 'Consolidação 2', periodicidade: 'Trimestral', status: 'Atualizado' },
     { relatorio: 'Consolidação 3', periodicidade: 'Anual', status: 'Atualizado' },
-  ];
-
-  const configuracoesData = [
-    { parametro: 'Fluxo de aprovação', valor: 'Ativo', status: 'OK' },
-    { parametro: 'Perfil padrão', valor: 'Ativo', status: 'OK' },
-    { parametro: 'Integração', valor: 'Ativo', status: 'OK' },
   ];
 
   const renderCadastrosCards = (cards) => (
@@ -1251,6 +2287,208 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     return null;
   };
 
+  const dashboardColorClasses = {
+    graphite: 'bg-graphite-900 dark:bg-graphite-200',
+    accent: 'bg-black dark:bg-graphite-200',
+    'graphite-light': 'bg-graphite-700 dark:bg-graphite-300',
+    'accent-soft': 'bg-graphite-800 dark:bg-graphite-200',
+    blue: 'bg-blue-700 dark:bg-blue-200',
+    'blue-soft': 'bg-blue-600 dark:bg-blue-300',
+    'blue-mid': 'bg-blue-800 dark:bg-blue-100',
+    teal: 'bg-emerald-700 dark:bg-emerald-200',
+    'teal-soft': 'bg-emerald-600 dark:bg-emerald-300',
+    'teal-mid': 'bg-emerald-800 dark:bg-emerald-100',
+    amber: 'bg-amber-700 dark:bg-amber-200',
+    'amber-soft': 'bg-amber-600 dark:bg-amber-300',
+    'amber-mid': 'bg-amber-800 dark:bg-amber-100',
+    slate: 'bg-cyan-700 dark:bg-cyan-200',
+    'slate-soft': 'bg-cyan-600 dark:bg-cyan-300',
+    'slate-mid': 'bg-sky-700 dark:bg-sky-200',
+  };
+
+  const dashboardThemeClasses = {
+    compras: {
+      glow: 'bg-blue-100/80',
+      badge: 'bg-blue-50 text-blue-700 border border-blue-200',
+    },
+    estoque: {
+      glow: 'bg-emerald-100/80',
+      badge: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+    },
+    faturamento: {
+      glow: 'bg-amber-100/80',
+      badge: 'bg-amber-50 text-amber-700 border border-amber-200',
+    },
+    orcamento: {
+      glow: 'bg-cyan-100/80',
+      badge: 'bg-cyan-50 text-cyan-700 border border-cyan-200',
+    },
+  };
+
+  const renderDashboardCards = (cards, theme = 'compras') => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((card, index) => {
+        const Icon = card.icon;
+        const TrendIcon = card.trend === 'up' ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
+
+        return (
+          <Card key={`${card.title}-${index}`} className="relative overflow-hidden border-graphite-200 bg-white shadow-sm">
+            <CardContent className="p-4">
+              <div className={`absolute -right-8 -top-8 h-24 w-24 rounded-full ${dashboardThemeClasses[theme]?.glow || 'bg-graphite-100/80'}`} />
+              <div className="relative flex items-start justify-between">
+                <div className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${dashboardColorClasses[card.color]}`}>
+                  <Icon className="h-5 w-5 text-white dark:text-graphite-900" />
+                </div>
+                <div className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${card.trend === 'up' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>
+                  <TrendIcon className="h-3.5 w-3.5" />
+                  <span>{card.change}</span>
+                </div>
+              </div>
+              <p className="mt-3 text-[11px] font-semibold uppercase tracking-wide text-graphite-500">{card.title}</p>
+              <p className="mt-1 text-2xl font-semibold text-graphite-900">{card.value}</p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
+  );
+
+  const renderDashboardStandard = ({
+    cards,
+    theme = 'compras',
+    chartTitle,
+    chartDescription,
+    chartConfig,
+    chartData,
+    primaryKey,
+    secondaryKey,
+    tooltipFormatter,
+    primaryTickFormatter,
+    secondaryTickFormatter,
+    tableTitle,
+    tableDescription,
+    tableColumns,
+    tableData,
+    tablePageSize = 8,
+    tableWrapperClassName = '',
+  }) => {
+    const primaryGradientId = `${primaryKey}-gradient`;
+    const secondaryGradientId = secondaryKey ? `${secondaryKey}-gradient` : null;
+
+    return (
+      <div className="space-y-5">
+        {renderDashboardCards(cards, theme)}
+
+        <Card className="border-graphite-200 bg-white shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-[1.04rem] font-semibold tracking-tight">{chartTitle}</CardTitle>
+                <CardDescription className="text-[13px] leading-relaxed">{chartDescription}</CardDescription>
+              </div>
+              <Badge variant="secondary" className={dashboardThemeClasses[theme]?.badge || 'bg-graphite-100 text-graphite-700'}>Últimos 6 meses</Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[320px] w-full">
+              <ComposedChart data={chartData} margin={{ top: 24, right: 12, left: 4, bottom: 4 }}>
+                <defs>
+                  <linearGradient id={primaryGradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={`var(--color-${primaryKey})`} stopOpacity={0.35} />
+                    <stop offset="95%" stopColor={`var(--color-${primaryKey})`} stopOpacity={0.02} />
+                  </linearGradient>
+                  {secondaryKey && (
+                    <linearGradient id={secondaryGradientId} x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor={`var(--color-${secondaryKey})`} stopOpacity={0.2} />
+                      <stop offset="95%" stopColor={`var(--color-${secondaryKey})`} stopOpacity={0.01} />
+                    </linearGradient>
+                  )}
+                </defs>
+                <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#d4d9e1" />
+                <XAxis dataKey="mes" tickLine={false} axisLine={false} />
+                <YAxis
+                  yAxisId="left"
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={primaryTickFormatter}
+                />
+                {secondaryKey && (
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={secondaryTickFormatter}
+                  />
+                )}
+                <Legend
+                  verticalAlign="top"
+                  align="center"
+                  height={34}
+                  iconType="circle"
+                  wrapperStyle={{ fontSize: '12px', letterSpacing: '-0.01em' }}
+                />
+                <ChartTooltip content={<ChartTooltipContent formatter={tooltipFormatter} />} />
+                <Area
+                  yAxisId="left"
+                  dataKey={primaryKey}
+                  type="monotone"
+                  fill={`url(#${primaryGradientId})`}
+                  stroke="none"
+                />
+                <Line
+                  yAxisId="left"
+                  dataKey={primaryKey}
+                  type="monotone"
+                  stroke={`var(--color-${primaryKey})`}
+                  strokeWidth={2.6}
+                  dot={{ r: 2.5 }}
+                  activeDot={{ r: 5 }}
+                />
+                {secondaryKey && (
+                  <>
+                    <Area
+                      yAxisId="right"
+                      dataKey={secondaryKey}
+                      type="monotone"
+                      fill={`url(#${secondaryGradientId})`}
+                      stroke="none"
+                    />
+                    <Line
+                      yAxisId="right"
+                      dataKey={secondaryKey}
+                      type="monotone"
+                      stroke={`var(--color-${secondaryKey})`}
+                      strokeWidth={2}
+                      dot={{ r: 2 }}
+                      activeDot={{ r: 4 }}
+                    />
+                  </>
+                )}
+              </ComposedChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="border-graphite-200 bg-white shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[1.02rem] font-semibold tracking-tight">{tableTitle}</CardTitle>
+            <CardDescription className="text-[13px] leading-relaxed">{tableDescription}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DataTable
+              columns={tableColumns}
+              data={tableData}
+              pageSize={tablePageSize}
+              tableWrapperClassName={tableWrapperClassName}
+              emptyMessage="Nenhum registro para os filtros selecionados."
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  };
+
   // Render
   const renderContent = () => {
     if (normalizedPage.startsWith('cadastros')) {
@@ -1259,421 +2497,493 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
 
     switch (normalizedPage) {
       case 'dashboard':
-        return (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {statsCards.map((card, index) => {
-                const Icon = card.icon;
-                const TrendIcon = card.trend === 'up' ? ArrowTrendingUpIcon : ArrowTrendingDownIcon;
-                const colorClasses = {
-                  graphite: 'bg-graphite-900 dark:bg-white',
-                  accent: 'bg-black dark:bg-white',
-                  'graphite-light': 'bg-graphite-700 dark:bg-graphite-300',
-                  'accent-soft': 'bg-graphite-800 dark:bg-graphite-200',
-                };
+      case 'dashboard-compras':
+        return renderDashboardStandard({
+          cards: statsCards,
+          theme: 'compras',
+          chartTitle: 'Evolução de Compras',
+          chartDescription: 'Valor aprovado e volume de pedidos no período.',
+          chartConfig: comprasChartConfig,
+          chartData: comprasTrendData,
+          primaryKey: 'valor',
+          secondaryKey: 'pedidos',
+          tooltipFormatter: (value, name) => (
+            name === 'valor'
+              ? `R$ ${Number(value).toLocaleString('pt-BR')}`
+              : `${value} pedidos`
+          ),
+          primaryTickFormatter: (value) => `R$ ${Math.round(value / 1000)}k`,
+          secondaryTickFormatter: (value) => `${value}`,
+          tableTitle: 'Categorias e Pipeline',
+          tableDescription: 'Visão consolidada de categorias com estágio atual de solicitação.',
+          tableColumns: [
+            { key: 'categoria', label: 'Categoria' },
+            {
+              key: 'valor',
+              label: 'Valor',
+              headerClassName: 'text-right',
+              cellClassName: 'text-right',
+              cell: (row) => <span className="font-medium">R$ {Number(row.valor).toLocaleString('pt-BR')}</span>,
+            },
+            {
+              key: 'status',
+              label: 'Status',
+              filterMode: 'select',
+              cell: (row) => <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">{row.status}</Badge>,
+            },
+            {
+              key: 'pedidos',
+              label: 'Pedidos',
+              headerClassName: 'text-right',
+              cellClassName: 'text-right',
+            },
+          ],
+          tableData: comprasResumoTabela,
+        });
 
-                return (
-                  <div
-                    key={index}
-                    className="bg-white rounded-lg border border-graphite-200 p-5
-                             hover:border-graphite-300 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={`p-2.5 rounded-md ${colorClasses[card.color]}`}>
-                        {card.iconLabel ? (
-                          <span className="text-white text-sm font-semibold dark:text-black">
-                            {card.iconLabel}
-                          </span>
-                        ) : (
-                          <Icon className="h-6 w-6 text-white dark:text-black" />
-                        )}
-                      </div>
-                      <div
-                        className={`flex items-center space-x-1 text-sm font-medium
-                                  ${
-                                    card.trend === 'up'
-                                      ? 'text-emerald-600'
-                                      : 'text-red-500'
-                                  }`}
-                      >
-                        <TrendIcon className="h-4 w-4" />
-                        <span>{card.change}</span>
-                      </div>
-                    </div>
-                    <h3 className="text-graphite-500 text-sm font-medium mb-1">
-                      {card.title}
-                    </h3>
-                    <p className="text-2xl font-semibold text-graphite-900">{card.value}</p>
-                  </div>
-                );
-              })}
-            </div>
+      case 'dashboard-estoque':
+        return renderDashboardStandard({
+          cards: estoqueStatsCards,
+          theme: 'estoque',
+          chartTitle: 'Nível de Estoque e Rupturas',
+          chartDescription: 'Saldo consolidado e ocorrências críticas por mês.',
+          chartConfig: estoqueChartConfig,
+          chartData: estoqueNivelData,
+          primaryKey: 'saldo',
+          secondaryKey: 'ruptura',
+          tooltipFormatter: (value, name) => (
+            name === 'saldo' ? `${value} itens` : `${value} rupturas`
+          ),
+          primaryTickFormatter: (value) => `${value}`,
+          secondaryTickFormatter: (value) => `${value}`,
+          tableTitle: 'Alertas de Reposição',
+          tableDescription: 'Itens com menor cobertura e prioridade de reabastecimento.',
+          tableColumns: [
+            { key: 'sku', label: 'SKU' },
+            { key: 'item', label: 'Item' },
+            { key: 'local', label: 'Local' },
+            { key: 'saldo', label: 'Saldo', headerClassName: 'text-right', cellClassName: 'text-right' },
+            {
+              key: 'giro',
+              label: 'Giro',
+              headerClassName: 'text-right',
+              cellClassName: 'text-right',
+              cell: (row) => <span className="font-medium">{row.giro}x</span>,
+            },
+            {
+              key: 'nivel',
+              label: 'Nível',
+              filterMode: 'select',
+              cell: (row) => <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">{row.nivel}</Badge>,
+            },
+          ],
+          tableData: estoqueResumoTabela,
+        });
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="bg-white rounded-lg border border-graphite-200 p-6">
-                <h3 className="text-lg font-semibold text-graphite-900 mb-4">
-                  Requisições Recentes
-                </h3>
-                <div className="space-y-4">
-                  {[1, 2, 3, 4, 5].map((item) => (
-                    <div
-                      key={item}
-                      className="flex items-center justify-between py-3 border-b border-graphite-100 last:border-0"
-                    >
-                      <div>
-                        <p className="font-medium text-graphite-900">
-                          Requisição #{4300 + item}
-                        </p>
-                        <p className="text-sm text-graphite-500">Centro de Custo: Administrativo</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-graphite-900">Prioridade Média</p>
-                        <p className="text-xs text-graphite-500">Hoje, 10:24</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+      case 'dashboard-faturamento':
+        return renderDashboardStandard({
+          cards: faturamentoStatsCards,
+          theme: 'faturamento',
+          chartTitle: 'Evolução de Faturamento',
+          chartDescription: 'Comparativo entre faturamento bruto e devoluções.',
+          chartConfig: faturamentoChartConfig,
+          chartData: faturamentoMensalData,
+          primaryKey: 'faturado',
+          secondaryKey: 'devolucao',
+          tooltipFormatter: (value) => `R$ ${Number(value).toLocaleString('pt-BR')}`,
+          primaryTickFormatter: (value) => `R$ ${Math.round(value / 1000)}k`,
+          secondaryTickFormatter: (value) => `R$ ${Math.round(value / 1000)}k`,
+          tableTitle: 'Títulos e Canais',
+          tableDescription: 'Acompanhamento de cobrança com segmentação por canal.',
+          tableColumns: [
+            { key: 'fatura', label: 'Fatura' },
+            { key: 'cliente', label: 'Cliente' },
+            { key: 'canal', label: 'Canal', filterMode: 'select' },
+            { key: 'vencimento', label: 'Vencimento' },
+            { key: 'valor', label: 'Valor', headerClassName: 'text-right', cellClassName: 'text-right' },
+            {
+              key: 'status',
+              label: 'Status',
+              filterMode: 'select',
+              cell: (row) => <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">{row.status}</Badge>,
+            },
+          ],
+          tableData: faturamentoResumoTabela,
+        });
 
-              <div className="bg-white rounded-lg border border-graphite-200 p-6">
-                <h3 className="text-lg font-semibold text-graphite-900 mb-4">
-                  Itens em Reposição
-                </h3>
-                <div className="space-y-4">
-                  {[
-                    { name: 'Cabo USB-C', qty: 145, value: 12500 },
-                    { name: 'Mouse Ergonômico', qty: 98, value: 8900 },
-                    { name: 'Monitor 24"', qty: 76, value: 6800 },
-                    { name: 'Dock USB-C', qty: 54, value: 4200 },
-                    { name: 'Teclado Slim', qty: 32, value: 2800 },
-                  ].map((product, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between py-3 border-b border-graphite-100 last:border-0"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-graphite-900">{product.name}</p>
-                        <p className="text-sm text-graphite-500">
-                          {product.qty} unidades
-                        </p>
-                      </div>
-                      <div className="w-32">
-                        <div className="w-full bg-graphite-100 rounded-full h-2">
-                          <div
-                            className="bg-black dark:bg-white h-2 rounded-full"
-                            style={{ width: `${(product.qty / 145) * 100}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div className="w-24 text-right">
-                        <p className="font-semibold text-graphite-900">
-                          R$ {product.value.toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
+      case 'dashboard-orcamento':
+        return renderDashboardStandard({
+          cards: orcamentoStatsCards,
+          theme: 'orcamento',
+          chartTitle: 'Orçado x Realizado',
+          chartDescription: 'Comparativo mensal de planejamento e execução orçamentária.',
+          chartConfig: orcamentoChartConfig,
+          chartData: orcamentoTrendData,
+          primaryKey: 'orcado',
+          secondaryKey: 'realizado',
+          tooltipFormatter: (value) => `R$ ${Number(value).toLocaleString('pt-BR')}`,
+          primaryTickFormatter: (value) => `R$ ${Math.round(value / 1000)}k`,
+          secondaryTickFormatter: (value) => `R$ ${Math.round(value / 1000)}k`,
+          tableTitle: 'Base Orçamentária',
+          tableDescription: 'Detalhamento por período, natureza orçamentária e centro de custo.',
+          tablePageSize: 12,
+          tableWrapperClassName: 'max-h-[560px] overflow-y-auto',
+          tableColumns: [
+            { key: 'codigoPeriodo', label: 'Código do período' },
+            { key: 'ano', label: 'Ano', filterMode: 'select' },
+            { key: 'mes', label: 'Mês', filterMode: 'select' },
+            {
+              key: 'orcado',
+              label: 'Orçado',
+              headerClassName: 'text-right',
+              cellClassName: 'text-right',
+              cell: (row) => <span className="font-medium">R$ {Number(row.orcado).toLocaleString('pt-BR')}</span>,
+            },
+            {
+              key: 'realizado',
+              label: 'Realizado',
+              headerClassName: 'text-right',
+              cellClassName: 'text-right',
+              cell: (row) => <span className="font-medium">R$ {Number(row.realizado).toLocaleString('pt-BR')}</span>,
+            },
+            { key: 'naturezaOrcamentaria', label: 'Natureza Orçamentária', filterMode: 'select' },
+            { key: 'centroCusto', label: 'Centro de Custo', filterMode: 'select' },
+          ],
+          tableData: orcamentoResumoTabela,
+        });
 
       case 'tarefas': {
-        const approvalColumns = [
-          {
-            key: 'id',
-            label: 'Pedido',
-            cell: (row) => <span className="font-medium">{row.id}</span>,
+        const parseCurrencyValue = (value) => {
+          if (!value) return 0;
+          return Number(String(value).replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+        };
+
+        const kpis = approvalPedidos.reduce(
+          (acc, pedido) => {
+            acc.total += 1;
+            acc.valorTotal += parseCurrencyValue(pedido.valor);
+            if (pedido.aprovacao === 'pendente') {
+              acc.pendentes += 1;
+              acc.valorPendente += parseCurrencyValue(pedido.valor);
+            }
+            if (pedido.aprovacao === 'aprovado') acc.aprovados += 1;
+            if (pedido.aprovacao === 'reprovado') acc.reprovados += 1;
+            return acc;
           },
           {
-            key: 'fornecedor',
-            label: 'Fornecedor',
-            cell: (row) => <span className="text-graphite-500">{row.fornecedor}</span>,
-          },
-          {
-            key: 'centro',
-            label: 'Centro de Custo',
-            cell: (row) => <span className="text-graphite-500">{row.centro}</span>,
-          },
-          {
-            key: 'criadoPor',
-            label: 'Criado por',
-            cell: (row) => <span className="text-graphite-500">{row.criadoPor}</span>,
-          },
-          {
-            key: 'valor',
-            label: 'Valor',
-            headerClassName: 'text-right',
-            cellClassName: 'text-right',
-            cell: (row) => <span className="font-medium">{row.valor}</span>,
-          },
-          {
-            key: 'aprovacao',
-            label: 'Status da Aprovação',
-            filterMode: 'select',
-            accessor: (row) => approvalStatusMap[row.aprovacao] || row.aprovacao,
-            cell: (row) => {
-              const approvalLabel = approvalStatusMap[row.aprovacao] || row.aprovacao;
-              return (
-                <div className="relative inline-flex items-center gap-2">
-                  <span
-                    className={`px-2.5 py-1 rounded-full border text-xs inline-flex items-center gap-2 ${
-                      row.aprovacao === 'aprovado'
-                        ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        : row.aprovacao === 'reprovado'
-                        ? 'border-red-200 bg-red-50 text-red-700'
-                        : 'border-amber-200 bg-amber-50 text-amber-700'
-                    }`}
-                  >
-                    {approvalLabel}
-                  </span>
-                  {(row.aprovacao === 'aprovado' || row.aprovacao === 'reprovado') && (
-                    <div
-                      className="relative"
-                      onMouseEnter={(e) => {
-                        e.stopPropagation();
-                        setApprovalInfoId(row.id);
-                      }}
-                      onMouseLeave={(e) => {
-                        e.stopPropagation();
-                        setApprovalInfoId(null);
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1.5 rounded-md border border-graphite-200 text-graphite-500 hover:text-graphite-900 hover:bg-graphite-50"
-                        title="Informações da aprovação"
-                      >
-                        <InformationCircleIcon className="h-4 w-4" />
-                      </button>
-                      {approvalInfoId === row.id && (
-                        <div className="absolute right-0 top-8 z-50 w-56 text-xs font-mono border border-graphite-300 rounded-md bg-white px-2 py-2 text-graphite-800 shadow-lg">
-                          {row.aprovacao === 'aprovado' ? (
-                            <>
-                              <div className="text-graphite-500">Aprovado por</div>
-                              <div className="mb-1">{row.aprovadoPor || '—'}</div>
-                              <div className="text-graphite-500">Data / Hora</div>
-                              <div>{row.aprovadoEm || '—'}</div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="text-graphite-500">Reprovado por</div>
-                              <div className="mb-1">{row.reprovadoPor || '—'}</div>
-                              <div className="text-graphite-500">Data / Hora</div>
-                              <div>{row.reprovadoEm || '—'}</div>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            },
-          },
-        ];
-        const approvalItemsColumns = [
-          { key: 'item', label: 'Item' },
-          { key: 'qtd', label: 'Qtde.', headerClassName: 'text-right', cellClassName: 'text-right' },
-          { key: 'un', label: 'UN', headerClassName: 'text-right', cellClassName: 'text-right' },
-          { key: 'unit', label: 'Valor Unitário', headerClassName: 'text-right', cellClassName: 'text-right' },
-        ];
+            total: 0,
+            pendentes: 0,
+            aprovados: 0,
+            reprovados: 0,
+            valorTotal: 0,
+            valorPendente: 0,
+          }
+        );
+
+        const filteredApprovals = approvalPedidos
+          .filter((pedido) => {
+            if (taskTab !== 'todos' && pedido.aprovacao !== taskTab) return false;
+            const term = approvalSearch.toLowerCase().trim();
+            if (!term) return true;
+            return (
+              pedido.id.toLowerCase().includes(term) ||
+              pedido.fornecedor.toLowerCase().includes(term) ||
+              pedido.centro.toLowerCase().includes(term) ||
+              pedido.criadoPor.toLowerCase().includes(term)
+            );
+          })
+          .sort((a, b) => parseCurrencyValue(b.valor) - parseCurrencyValue(a.valor));
+
+        const selectedIsVisible = filteredApprovals.some((row) => row.id === approvalSelected?.id);
+        const activeApproval = selectedIsVisible ? approvalSelected : filteredApprovals[0] || null;
+
+        const decisionMeta =
+          activeApproval?.aprovacao === 'aprovado'
+            ? {
+                label: 'Aprovado',
+                by: activeApproval?.aprovadoPor,
+                at: activeApproval?.aprovadoEm,
+                style: 'border-emerald-200 bg-emerald-50 text-emerald-700',
+              }
+            : activeApproval?.aprovacao === 'reprovado'
+            ? {
+                label: 'Reprovado',
+                by: activeApproval?.reprovadoPor,
+                at: activeApproval?.reprovadoEm,
+                style: 'border-red-200 bg-red-50 text-red-700',
+              }
+            : {
+                label: 'Pendente',
+                by: '-',
+                at: '-',
+                style: 'border-amber-200 bg-amber-50 text-amber-700',
+              };
 
         return (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-graphite-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <h2 className="text-2xl font-semibold text-graphite-900">Aprovação</h2>
-                  <p className="text-graphite-500">
-                    Pedidos de compra aguardando decisão.
-                  </p>
+            <Card className="overflow-hidden border-graphite-200">
+              <CardContent className="relative p-0">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#dbeafe,transparent_52%),radial-gradient(circle_at_bottom_left,#e2e8f0,transparent_55%)] opacity-90" />
+                <div className="relative grid gap-4 p-6 lg:grid-cols-[1.3fr_1fr] lg:items-end">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-500">Workbench de decisão</p>
+                    <h2 className="mt-2 text-2xl font-semibold text-graphite-900">Tarefas e Aprovações</h2>
+                    <p className="mt-2 max-w-xl text-sm text-graphite-600">
+                      Foco no que é crítico: fila priorizada por impacto financeiro e decisão orientada por contexto.
+                    </p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                      <p className="text-xs text-graphite-500">Pendentes</p>
+                      <p className="mt-1 text-xl font-semibold text-graphite-900">{kpis.pendentes}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                      <p className="text-xs text-graphite-500">Valor pendente</p>
+                      <p className="mt-1 text-xl font-semibold text-graphite-900">
+                        R$ {kpis.valorPendente.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                      <p className="text-xs text-graphite-500">Aprovados</p>
+                      <p className="mt-1 text-xl font-semibold text-emerald-700">{kpis.aprovados}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                      <p className="text-xs text-graphite-500">Reprovados</p>
+                      <p className="mt-1 text-xl font-semibold text-red-700">{kpis.reprovados}</p>
+                    </div>
+                  </div>
                 </div>
-                <Button variant="secondary" size="default">Filtros avançados</Button>
-              </div>
-              <Tabs value={taskTab} onValueChange={setTaskTab} className="mb-4">
-                <TabsList className="flex flex-wrap gap-2">
-                  <TabsTrigger value="itens">Itens</TabsTrigger>
-                  <TabsTrigger value="anexos">Anexos</TabsTrigger>
-                  <TabsTrigger value="historico">Histórico</TabsTrigger>
-                  <TabsTrigger value="aprovacao">Aprovação</TabsTrigger>
-                </TabsList>
-                <TabsContent value="itens">
-                  <div className="mt-4">
-                    <DataTable
-                      columns={approvalColumns}
-                      data={approvalPedidos}
-                      onRowClick={(pedido) => {
-                        setApprovalSelected(pedido);
-                        setApprovalResult('');
-                        setApprovalProgress(0);
-                        setApprovalProcessing(false);
-                        setApprovalInfoId(null);
-                      }}
-                      getRowClassName={(pedido) =>
-                        `cursor-pointer ${
-                          approvalSelected?.id === pedido.id
-                            ? 'bg-graphite-50 dark:bg-graphite-800'
-                            : 'hover:bg-graphite-50'
-                        }`
-                      }
-                      emptyMessage="Nenhum pedido para os filtros selecionados."
+              </CardContent>
+            </Card>
+
+            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.05fr_1fr]">
+              <Card className="border-graphite-200">
+                <CardHeader className="gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-lg text-graphite-900">Fila de decisão</CardTitle>
+                      <CardDescription className="text-graphite-500">
+                        Selecione um pedido para revisar detalhes e decidir.
+                      </CardDescription>
+                    </div>
+                    <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                      {filteredApprovals.length} itens
+                    </Badge>
+                  </div>
+
+                  <Tabs value={taskTab} onValueChange={setTaskTab}>
+                    <TabsList className="grid w-full grid-cols-4">
+                      <TabsTrigger value="pendente">Pendentes</TabsTrigger>
+                      <TabsTrigger value="aprovado">Aprovados</TabsTrigger>
+                      <TabsTrigger value="reprovado">Reprovados</TabsTrigger>
+                      <TabsTrigger value="todos">Todos</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  <div className="relative">
+                    <Input
+                      value={approvalSearch}
+                      onChange={(e) => setApprovalSearch(e.target.value)}
+                      placeholder="Buscar por pedido, fornecedor, centro ou solicitante..."
                     />
                   </div>
-                  <div className="mt-4 border border-graphite-300 rounded-md p-4 font-mono">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs uppercase text-graphite-500">Detalhes do Pedido</p>
-                        <h4 className="text-sm font-semibold text-graphite-900">
-                          Pedido {approvalSelected?.id || '—'}
-                        </h4>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="space-y-2">
+                    {filteredApprovals.length === 0 && (
+                      <div className="rounded-lg border border-dashed border-graphite-300 bg-graphite-50 p-6 text-center text-sm text-graphite-500">
+                        Nenhum pedido encontrado para os filtros selecionados.
                       </div>
-                      <div className="text-xs flex items-center gap-2">
-                        <span
-                          className={`h-2.5 w-2.5 rounded-full ${
-                            approvalColorMap[approvalSelected?.aprovacao]
-                              ? approvalColorMap[approvalSelected?.aprovacao].replace('text-', 'bg-')
-                              : 'bg-graphite-400'
-                          }`}
-                        />
-                        <span className={approvalColorMap[approvalSelected?.aprovacao] || 'text-graphite-500'}>
-                          {approvalStatusMap[approvalSelected?.aprovacao] || '—'}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="mt-3 text-sm text-graphite-800 border border-graphite-300 rounded-md p-3 bg-graphite-50">
-                      <p className="text-xs uppercase text-graphite-500 mb-1">Resumo</p>
-                      <p>{approvalSelected?.resumo || '—'}</p>
-                    </div>
-                    <div className="mt-3 text-sm text-graphite-800 border border-graphite-300 rounded-md p-3">
-                      <p className="text-xs uppercase text-graphite-500 mb-1">Observação</p>
-                      <p>{approvalSelected?.observacao || '—'}</p>
-                    </div>
-                    <div className="mt-3">
-                      <DataTable
-                        columns={approvalItemsColumns}
-                        data={approvalSelected?.itens || []}
-                        hidePagination
-                        emptyMessage="Nenhum item para os filtros selecionados."
-                      />
-                    </div>
-                    <div className="mt-3 border border-graphite-300 rounded-md overflow-hidden text-sm">
-                      <div className="grid grid-cols-1 md:grid-cols-2 bg-graphite-100 text-xs text-graphite-600">
-                        <div className="px-3 py-2 border-b border-graphite-300 md:border-r">Fornecedor</div>
-                        <div className="px-3 py-2 border-b border-graphite-300">Centro de Custo</div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2">
-                        <div className="px-3 py-2 border-b border-graphite-300 md:border-r font-medium text-graphite-900">
-                          {approvalSelected?.fornecedor || '—'}
-                        </div>
-                        <div className="px-3 py-2 border-b border-graphite-300 font-medium text-graphite-900">
-                          {approvalSelected?.centro || '—'}
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 bg-graphite-100 text-xs text-graphite-600">
-                        <div className="px-3 py-2 border-b border-graphite-300 md:border-r">Criado por</div>
-                        <div className="px-3 py-2 border-b border-graphite-300">Valor</div>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2">
-                        <div className="px-3 py-2 border-b border-graphite-300 md:border-r font-medium text-graphite-900">
-                          {approvalSelected?.criadoPor || '—'}
-                        </div>
-                        <div className="px-3 py-2 border-b border-graphite-300 font-medium text-graphite-900">
-                          {approvalSelected?.valor || '—'}
-                        </div>
-                      </div>
-                    </div>
-                    {approvalResult && (
-                      <div
-                        className={`mt-4 px-3 py-2 rounded-md text-xs border ${
-                          approvalResult === 'Aprovado com sucesso'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-red-200 bg-red-50 text-red-700'
+                    )}
+                    {filteredApprovals.map((pedido) => (
+                      <button
+                        key={pedido.id}
+                        type="button"
+                        onClick={() => {
+                          setApprovalSelected(pedido);
+                          setApprovalResult('');
+                          setApprovalProgress(0);
+                          setApprovalProcessing(false);
+                        }}
+                        className={`w-full rounded-xl border p-4 text-left transition-all ${
+                          activeApproval?.id === pedido.id
+                            ? 'border-graphite-300 bg-graphite-100 text-graphite-900 shadow-sm'
+                            : 'border-graphite-200 bg-white hover:border-graphite-400 hover:bg-graphite-50'
                         }`}
                       >
-                        {approvalResult}
-                      </div>
-                    )}
-                    {approvalSelected?.aprovacao === 'pendente' ? (
-                      <div className="mt-4 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="px-2.5 py-1.5 text-xs rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-60"
-                            onClick={() => handleApprovalAction('aprovado')}
-                            disabled={approvalProcessing}
-                          >
-                            <CheckIcon className="inline h-4 w-4 mr-1" />
-                            Aprovar pedido
-                          </button>
-                          <button
-                            className="px-2.5 py-1.5 text-xs rounded-md bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 disabled:opacity-60"
-                            onClick={() => handleApprovalAction('reprovado')}
-                            disabled={approvalProcessing}
-                          >
-                            <XMarkIcon className="inline h-4 w-4 mr-1" />
-                            Reprovar pedido
-                          </button>
-                        </div>
-                        {approvalProcessing && (
-                          <div className="border border-graphite-200 bg-white rounded-md px-3 py-2">
-                            <div className="flex items-center justify-between text-xs text-graphite-500 mb-2">
-                              <span>Processando decisão...</span>
-                              <span>{approvalProgress}%</span>
-                            </div>
-                            <div className="h-2 w-full bg-graphite-100 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-black dark:bg-white transition-all"
-                                style={{ width: `${approvalProgress}%` }}
-                              />
-                            </div>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className={`text-xs ${activeApproval?.id === pedido.id ? 'text-graphite-600' : 'text-graphite-500'}`}>
+                              Pedido {pedido.id}
+                            </p>
+                            <p className="mt-1 text-sm font-semibold">{pedido.fornecedor}</p>
                           </div>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="mt-4 inline-flex items-center gap-2 text-xs">
-                        <span className={`px-2.5 py-1 rounded-full border ${
-                          approvalSelected?.aprovacao === 'aprovado'
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-red-200 bg-red-50 text-red-700'
-                        }`}>
-                          {approvalStatusMap[approvalSelected?.aprovacao]}
-                        </span>
-                      </div>
+                          <span
+                            className={`rounded-full border px-2 py-1 text-[11px] ${
+                              pedido.aprovacao === 'aprovado'
+                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                                : pedido.aprovacao === 'reprovado'
+                                ? 'border-red-200 bg-red-50 text-red-700'
+                                : 'border-amber-200 bg-amber-50 text-amber-700'
+                            }`}
+                          >
+                            {approvalStatusMap[pedido.aprovacao]}
+                          </span>
+                        </div>
+                        <p className={`mt-2 line-clamp-2 text-xs ${activeApproval?.id === pedido.id ? 'text-graphite-700' : 'text-graphite-600'}`}>
+                          {pedido.resumo}
+                        </p>
+                        <div className={`mt-3 grid grid-cols-2 gap-2 text-xs ${activeApproval?.id === pedido.id ? 'text-graphite-700' : 'text-graphite-500'}`}>
+                          <span>Centro: {pedido.centro}</span>
+                          <span className="text-right font-medium">{pedido.valor}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-graphite-200">
+                <CardHeader className="gap-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-graphite-500">Painel de aprovação</p>
+                      <CardTitle className="text-lg text-graphite-900">
+                        {activeApproval ? `Pedido ${activeApproval.id}` : 'Selecione um pedido'}
+                      </CardTitle>
+                    </div>
+                    {activeApproval && (
+                      <span className={`rounded-full border px-2.5 py-1 text-xs ${decisionMeta.style}`}>
+                        {decisionMeta.label}
+                      </span>
                     )}
                   </div>
-                </TabsContent>
-                <TabsContent value="anexos">
-                  <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
-                      Nenhum anexo disponível. Adicione arquivos para registrar evidências.
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {!activeApproval && (
+                    <div className="rounded-lg border border-dashed border-graphite-300 bg-graphite-50 p-8 text-center text-sm text-graphite-500">
+                      Escolha um item da fila para visualizar detalhes de aprovação.
                     </div>
-                    <Button variant="secondary" size="sm">Adicionar anexo</Button>
-                  </div>
-                </TabsContent>
-                <TabsContent value="historico">
-                  <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <ClockIcon className="h-5 w-5 text-graphite-400" />
-                      Histórico de ações será exibido aqui.
-                    </div>
-                    <Button variant="ghost" size="sm">Ver histórico</Button>
-                  </div>
-                </TabsContent>
-                <TabsContent value="aprovacao">
-                  <div className="mt-3 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
-                      Fluxo de aprovação pendente de configuração.
-                    </div>
-                    <Button variant="secondary" size="sm">Configurar fluxo</Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
-              <div className="text-xs text-graphite-500">
-                Linhas exibidas na aba Itens para manter consistência visual.
-              </div>
+                  )}
+
+                  {activeApproval && (
+                    <>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <div className="rounded-lg border border-graphite-200 p-3">
+                          <p className="text-xs text-graphite-500">Fornecedor</p>
+                          <p className="text-sm font-semibold text-graphite-900">{activeApproval.fornecedor}</p>
+                        </div>
+                        <div className="rounded-lg border border-graphite-200 p-3">
+                          <p className="text-xs text-graphite-500">Centro de custo</p>
+                          <p className="text-sm font-semibold text-graphite-900">{activeApproval.centro}</p>
+                        </div>
+                        <div className="rounded-lg border border-graphite-200 p-3">
+                          <p className="text-xs text-graphite-500">Solicitante</p>
+                          <p className="text-sm font-semibold text-graphite-900">{activeApproval.criadoPor}</p>
+                        </div>
+                        <div className="rounded-lg border border-graphite-200 p-3">
+                          <p className="text-xs text-graphite-500">Valor total</p>
+                          <p className="text-sm font-semibold text-graphite-900">{activeApproval.valor}</p>
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-graphite-200 bg-graphite-50 p-3">
+                        <p className="text-xs uppercase text-graphite-500">Resumo</p>
+                        <p className="mt-1 text-sm text-graphite-800">{activeApproval.resumo}</p>
+                      </div>
+
+                      <div className="rounded-lg border border-graphite-200 p-3">
+                        <p className="text-xs uppercase text-graphite-500">Observação</p>
+                        <p className="mt-1 text-sm text-graphite-700">{activeApproval.observacao || 'Sem observações adicionais.'}</p>
+                      </div>
+
+                      <div className="overflow-hidden rounded-lg border border-graphite-200">
+                        <div className="grid grid-cols-[1fr_70px_70px_120px] bg-graphite-50 px-3 py-2 text-xs text-graphite-500">
+                          <span>Item</span>
+                          <span className="text-right">Qtd</span>
+                          <span className="text-right">UN</span>
+                          <span className="text-right">Valor Unit.</span>
+                        </div>
+                        <div className="divide-y divide-graphite-200">
+                          {(activeApproval.itens || []).map((item, index) => (
+                            <div
+                              key={`${activeApproval.id}-${item.item}-${index}`}
+                              className="grid grid-cols-[1fr_70px_70px_120px] px-3 py-2 text-sm"
+                            >
+                              <span className="text-graphite-800">{item.item}</span>
+                              <span className="text-right text-graphite-600">{item.qtd}</span>
+                              <span className="text-right text-graphite-600">{item.un}</span>
+                              <span className="text-right font-medium text-graphite-900">{item.unit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {approvalResult && (
+                        <div
+                          className={`rounded-lg border px-3 py-2 text-sm ${
+                            approvalResult === 'Aprovado com sucesso'
+                              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                              : 'border-red-200 bg-red-50 text-red-700'
+                          }`}
+                        >
+                          {approvalResult}
+                        </div>
+                      )}
+
+                      {activeApproval.aprovacao === 'pendente' ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApprovalAction('aprovado')}
+                              disabled={approvalProcessing}
+                              className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                            >
+                              <CheckIcon className="mr-1 h-4 w-4" />
+                              Aprovar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleApprovalAction('reprovado')}
+                              disabled={approvalProcessing}
+                              className="border-red-200 text-red-700 hover:bg-red-50"
+                            >
+                              <XMarkIcon className="mr-1 h-4 w-4" />
+                              Reprovar
+                            </Button>
+                          </div>
+
+                          {approvalProcessing && (
+                            <div className="rounded-lg border border-graphite-200 bg-white px-3 py-2">
+                              <div className="mb-2 flex items-center justify-between text-xs text-graphite-500">
+                                <span>Processando decisão</span>
+                                <span>{approvalProgress}%</span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-graphite-100">
+                                <div
+                                  className="h-full bg-graphite-900 transition-all"
+                                  style={{ width: `${approvalProgress}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="rounded-lg border border-graphite-200 bg-graphite-50 p-3 text-xs text-graphite-600">
+                          <p className="font-medium text-graphite-800">Histórico da decisão</p>
+                          <p className="mt-1">Responsável: {decisionMeta.by || '-'}</p>
+                          <p>Data/Hora: {decisionMeta.at || '-'}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             </div>
           </div>
         );
@@ -2066,6 +3376,1032 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
         );
       }
 
+      case 'despesas-viagens': {
+        const travelStatusStyles = {
+          Aprovada: 'border-teal-200 bg-teal-50 text-teal-700',
+          Finalizada: 'border-violet-200 bg-violet-50 text-violet-700',
+          'Em fila de pagamento': 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          'Aguardando integração': 'border-amber-200 bg-amber-50 text-amber-700',
+          'Viagem em andamento': 'border-sky-200 bg-sky-50 text-sky-700',
+        };
+
+        const selectedTravelExpense = travelExpenses.find((row) => row.id === selectedTravelExpenseId) || null;
+        const travelReport = selectedTravelExpense
+          ? {
+              ...selectedTravelExpense,
+              origem: selectedTravelExpense.origem || 'Santos/SP',
+              motivo: selectedTravelExpense.motivo || 'Visita técnica e alinhamento operacional.',
+              solicitante: 'Diego Santos',
+              centroCusto: selectedTravelExpense.centroCusto || 'Operações',
+              filial: 'Filial Santos',
+              aprovadoPor:
+                selectedTravelExpense.status === 'Aprovada' || selectedTravelExpense.status === 'Em fila de pagamento'
+                  ? 'Renata Carvalho'
+                  : '--',
+              observacao:
+                selectedTravelExpense.status === 'Aguardando integração'
+                  ? 'Aguardando integração do RM para seguir com o fluxo de pagamento.'
+                  : 'Documentação conferida e valores validados para prestação.',
+            }
+          : null;
+
+        const reportShareText = travelReport
+          ? [
+              `Relatório de Despesa de Viagem - ${travelReport.id}`,
+              `Tipo: ${travelReport.tipoSolicitacao}`,
+              `Solicitante: ${travelReport.solicitante}`,
+              `Origem: ${travelReport.origem}`,
+              `Destino: ${travelReport.destino}`,
+              `Período: ${travelReport.periodo}`,
+              `KM: ${travelReport.kmEstimado}`,
+              `Total: ${travelReport.total}`,
+              `Status: ${travelReport.status}`,
+              `Data Prevista Pagamento: ${travelReport.dataPrevistaPgto || '--'}`,
+              `Pagamento Realizado em: ${travelReport.pgtoRealizadoEm || '--'}`,
+              `Número RM: ${travelReport.numeroRm || 'Pendente'}`,
+            ].join('\n')
+          : '';
+        const reportRouteMap = (() => {
+          if (!travelReport?.origem || !travelReport?.destino) {
+            return { embedUrl: '', externalUrl: '' };
+          }
+          const encodedOrigin = encodeURIComponent(travelReport.origem);
+          const encodedDestination = encodeURIComponent(travelReport.destino);
+          return {
+            embedUrl: `https://www.google.com/maps?output=embed&saddr=${encodedOrigin}&daddr=${encodedDestination}`,
+            externalUrl: `https://www.google.com/maps/dir/?api=1&origin=${encodedOrigin}&destination=${encodedDestination}&travelmode=driving`,
+          };
+        })();
+
+        const despesasViagensColumns = [
+          { key: 'id', label: 'ID' },
+          { key: 'tipoSolicitacao', label: 'Tipo de solicitação', filterMode: 'select' },
+          { key: 'destino', label: 'Destino' },
+          { key: 'kmEstimado', label: 'KM estimado', enableFilter: false },
+          { key: 'periodo', label: 'Período', enableFilter: false },
+          {
+            key: 'dataPrevistaPgto',
+            label: 'Data prevista Pgto.',
+            enableFilter: false,
+            cell: (row) => <span className="text-graphite-700">{row.dataPrevistaPgto || '--'}</span>,
+          },
+          {
+            key: 'pgtoRealizadoEm',
+            label: 'Pgto Realizado em',
+            enableFilter: false,
+            cell: (row) => <span className="text-graphite-700">{row.pgtoRealizadoEm || '--'}</span>,
+          },
+          {
+            key: 'numeroRm',
+            label: 'Número RM',
+            cell: (row) => (
+              <span className={row.numeroRm ? 'font-mono font-medium text-graphite-800' : 'text-graphite-400'}>
+                {row.numeroRm || 'Pendente'}
+              </span>
+            ),
+          },
+          {
+            key: 'total',
+            label: 'Total',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+            enableFilter: false,
+          },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge
+                variant="secondary"
+                className={travelStatusStyles[row.status] || 'border-graphite-200 bg-graphite-100 text-graphite-700'}
+              >
+                {row.status}
+              </Badge>
+            ),
+          },
+          {
+            key: 'anexos',
+            label: 'Anexos',
+            headerClassName: 'text-right',
+            cellClassName: 'text-right',
+            cell: (row) => <span>{row.anexos}</span>,
+            enableFilter: false,
+          },
+        ];
+
+        return (
+          <div className="space-y-6">
+            <div className="rounded-lg border border-graphite-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-end">
+                <Button variant="default" size="default" onClick={handleOpenTravelDialog}>
+                  Nova
+                </Button>
+              </div>
+              <DataTable
+                columns={despesasViagensColumns}
+                data={travelExpenses}
+                filterTitle="Filtros de Despesas"
+                filterContainerClassName="border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50 p-4 shadow-sm dark:border-sky-800/60 dark:from-graphite-900 dark:to-graphite-800"
+                filterGridClassName="xl:grid-cols-5 gap-4"
+                filterLabelClassName="text-graphite-700 dark:text-graphite-200"
+                filterInputClassName="h-10 border-sky-200 bg-white shadow-sm focus:border-sky-400 focus:ring-sky-300 dark:border-sky-900/70 dark:bg-graphite-900"
+                filterSelectTriggerClassName="h-10 border-sky-200 bg-white shadow-sm focus:border-sky-400 focus:ring-sky-300 dark:border-sky-900/70 dark:bg-graphite-900"
+                onRowClick={(row) => {
+                  setSelectedTravelExpenseId(row.id);
+                  setTravelReportDialogOpen(true);
+                }}
+                getRowClassName={(row) =>
+                  `cursor-pointer ${
+                    selectedTravelExpenseId === row.id
+                      ? 'bg-graphite-100/80 ring-1 ring-inset ring-graphite-300'
+                      : 'hover:bg-graphite-50'
+                  }`
+                }
+                emptyMessage="Nenhuma despesa de viagem para os filtros selecionados."
+              />
+            </div>
+
+            <Dialog open={travelReportDialogOpen} onOpenChange={setTravelReportDialogOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Resumo da despesa</DialogTitle>
+                  <DialogDescription>Formato de relatório para envio e impressão.</DialogDescription>
+                </DialogHeader>
+
+                {travelReport && (
+                  <div className="space-y-4">
+                    {(() => {
+                      const itemValuePresets = {
+                        Hospedagem: 420,
+                        Combustível: 180,
+                        Taxi: 75,
+                        Uber: 68,
+                        'Passagem aérea': 860,
+                        Alimentação: 92,
+                        Pedágio: 54,
+                        Estacionamento: 35,
+                        Almoço: 68,
+                        Jantar: 92,
+                      };
+                      const resumoItens = (travelReport.itens || []).map((nome) => ({
+                        nome,
+                        valor: `R$ ${(itemValuePresets[nome] || 0).toLocaleString('pt-BR', {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}`,
+                      }));
+                      return (
+                    <div className="rounded-xl border-2 border-dashed border-graphite-300 bg-white p-4 font-mono text-sm">
+                      <div className="border-b border-dashed border-graphite-300 pb-2 text-center">
+                        <p className="text-xs uppercase tracking-wide text-graphite-500">Resumo de Viagem</p>
+                        <p className="text-base font-semibold text-graphite-900">{travelReport.id}</p>
+                        <div className="mt-2 flex justify-center">
+                          <Badge
+                            variant="secondary"
+                            className={travelStatusStyles[travelReport.status] || 'border-graphite-200 bg-graphite-100 text-graphite-700'}
+                          >
+                            {travelReport.status}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="mt-3 overflow-hidden rounded-md border border-graphite-200 text-xs text-graphite-700">
+                        {[
+                          ['Tipo', travelReport.tipoSolicitacao],
+                          ['Solicitante', travelReport.solicitante],
+                          ['Centro de custo', travelReport.centroCusto],
+                          ['Origem', travelReport.origem],
+                          ['Destino', travelReport.destino],
+                          ['Período', travelReport.periodo],
+                          ['KM estimado', travelReport.kmEstimado],
+                          ['Total', travelReport.total],
+                          ['Número RM', travelReport.numeroRm || 'Pendente'],
+                        ].map(([label, value], index) => (
+                          <div
+                            key={label}
+                            className={`flex justify-between px-2 py-1.5 ${
+                              index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                            }`}
+                          >
+                            <span>{label}</span>
+                            <span>{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 border-t border-dashed border-graphite-300 pt-2 text-xs text-graphite-700">
+                        <p className="font-semibold text-graphite-900">Motivo</p>
+                        <p>{travelReport.motivo}</p>
+                        <p className="mt-2 font-semibold text-graphite-900">Observação</p>
+                        <p>{travelReport.observacao}</p>
+                        <p className="mt-3 font-semibold text-graphite-900">Itens</p>
+                        <div className="mt-1 overflow-hidden rounded-md border border-graphite-200">
+                          {resumoItens.map((item, index) => (
+                            <div
+                              key={item.nome}
+                              className={`flex items-center justify-between px-2 py-1.5 ${
+                                index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                              }`}
+                            >
+                              <span>{item.nome}</span>
+                              <span>{item.valor}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-3 border-t border-dashed border-graphite-300 pt-2 text-xs text-graphite-700">
+                        <div className="overflow-hidden rounded-md border border-graphite-200">
+                          {[
+                            ['Data prevista Pagamento', travelReport.dataPrevistaPgto || '--'],
+                            ['Pagamento Realizado em', travelReport.pgtoRealizadoEm || '--'],
+                          ].map(([label, value], index) => (
+                            <div
+                              key={label}
+                              className={`flex justify-between px-2 py-1.5 ${
+                                index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                              }`}
+                            >
+                              <span>{label}</span>
+                              <span className="inline-flex items-center gap-1">
+                                {label === 'Pagamento Realizado em' &&
+                                  travelReport.status === 'Finalizada' &&
+                                  value !== '--' && (
+                                    <CheckIcon className="h-3.5 w-3.5 text-emerald-600" />
+                                  )}
+                                {value}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                      );
+                    })()}
+
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setTravelReportMapDialogOpen(true)}
+                        disabled={!reportRouteMap.embedUrl}
+                      >
+                        <MapPinIcon className="mr-1 h-4 w-4" />
+                        Visualizar mapa
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => window.print()}>
+                        <PrinterIcon className="mr-1 h-4 w-4" />
+                        Imprimir
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.open(`https://wa.me/?text=${encodeURIComponent(reportShareText)}`, '_blank', 'noopener,noreferrer')
+                        }
+                      >
+                        <ChatBubbleLeftRightIcon className="mr-1 h-4 w-4" />
+                        WhatsApp
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          window.location.assign(
+                            `mailto:?subject=${encodeURIComponent(`Relatório de Despesa - ${travelReport.id}`)}&body=${encodeURIComponent(
+                              reportShareText
+                            )}`
+                          )
+                        }
+                      >
+                        <EnvelopeIcon className="mr-1 h-4 w-4" />
+                        Email
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={travelReportMapDialogOpen} onOpenChange={setTravelReportMapDialogOpen}>
+              <DialogContent className="max-w-5xl">
+                <DialogHeader>
+                  <DialogTitle>Mapa do trajeto</DialogTitle>
+                  <DialogDescription>Rota da solicitação selecionada.</DialogDescription>
+                </DialogHeader>
+                {reportRouteMap.embedUrl ? (
+                  <div className="space-y-3">
+                    <div className="overflow-hidden rounded-lg border border-graphite-200">
+                      <iframe
+                        title="Mapa do trajeto da solicitação"
+                        src={reportRouteMap.embedUrl}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        className="h-[60vh] w-full bg-graphite-50"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(reportRouteMap.externalUrl, '_blank', 'noopener,noreferrer')}
+                      >
+                        Abrir no Google Maps
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Endereços não disponíveis para esta solicitação.
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={travelDialogOpen} onOpenChange={setTravelDialogOpen}>
+              <DialogContent className="flex max-h-[88vh] max-w-3xl flex-col overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle>Nova solicitação de viagem</DialogTitle>
+                  <DialogDescription>
+                    Escolha o tipo da solicitação e registre os dados básicos para integração ao RM.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="overflow-y-auto pr-1">
+                {!travelDraft.tipoSolicitacao ? (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                    {TRAVEL_TYPE_OPTIONS.map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleSelectTravelType(option.value)}
+                        className="rounded-lg border border-graphite-200 bg-white p-4 text-left transition-colors hover:border-graphite-300 hover:bg-graphite-50"
+                      >
+                        <p className="text-sm font-semibold text-graphite-900">{option.label}</p>
+                        <p className="mt-1 text-xs text-graphite-500">{option.description}</p>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/40 p-4 shadow-sm">
+                      <div className="mb-3 flex items-center justify-between">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Resumo da solicitação</p>
+                        <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
+                          {travelDraft.tipoSolicitacao}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Tipo</label>
+                          <Input
+                            value={travelDraft.tipoSolicitacao}
+                            disabled
+                            className="bg-graphite-50"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Número RM</label>
+                          <Input
+                            value={travelDraft.numeroRm || 'Será preenchido após integração no ERP'}
+                            disabled
+                            className="bg-graphite-50 font-mono"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Início</label>
+                          <Input
+                            type="date"
+                            value={travelDraft.periodoInicio}
+                            onChange={(e) => handleTravelDraftChange('periodoInicio', e.target.value)}
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Fim</label>
+                          <Input
+                            type="date"
+                            value={travelDraft.periodoFim}
+                            onChange={(e) => handleTravelDraftChange('periodoFim', e.target.value)}
+                            min={travelDraft.periodoInicio || undefined}
+                            disabled={!travelDraft.periodoInicio}
+                            required
+                          />
+                        </div>
+                      </div>
+                      {hasInvalidTravelDateRange && (
+                        <p className="mt-2 text-xs text-red-600">A data fim não pode ser menor que a data início.</p>
+                      )}
+                    </div>
+
+                    <div className="overflow-visible rounded-xl border border-sky-200 bg-gradient-to-b from-sky-50/70 to-white p-4 shadow-sm">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700">
+                            <ArrowRightIcon className="h-4 w-4" />
+                            Traslado
+                          </p>
+                          <p className="text-xs text-graphite-600">
+                            Informe origem e destino para calcular automaticamente a distância estimada.
+                          </p>
+                          <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-graphite-700">
+                            <input
+                              type="checkbox"
+                              checked={travelRoundTrip}
+                              onChange={(e) => {
+                                setTravelRoundTrip(e.target.checked);
+                                setTravelTollEstimated('');
+                                setTravelTollError('');
+                                lastTravelKmQuery.current = '';
+                              }}
+                              className="h-4 w-4 rounded border-graphite-300 text-sky-700 focus:ring-sky-200"
+                            />
+                            Considerar ida e volta
+                          </label>
+                        </div>
+                        <div className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-right">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-graphite-500">KM estimado</p>
+                          <p className="text-base font-semibold text-sky-800">
+                            {travelKmLoading
+                              ? 'Calculando...'
+                              : travelDraft.kmEstimado
+                              ? `${travelDraft.kmEstimado} km`
+                              : '--'}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={handleCalculateEstimatedToll}
+                            disabled={travelTollLoading}
+                            className="mt-2 inline-flex items-center rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {travelTollLoading ? 'Calculando...' : 'Pedágio estimado'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleOpenTravelMap}
+                            disabled={!canOpenTravelMap}
+                            className="mt-2 inline-flex items-center rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            <MapPinIcon className="mr-1 h-3.5 w-3.5" />
+                            Visualizar mapa
+                          </button>
+                          {travelTollEstimated && (
+                            <p className="mt-1 text-xs font-semibold text-amber-700">{travelTollEstimated}</p>
+                          )}
+                          {travelTollError && (
+                            <p className="mt-1 text-xs text-red-600">{travelTollError}</p>
+                          )}
+                          {!canOpenTravelMap && (
+                            <p className="mt-1 text-xs text-graphite-500">Preencha origem e destino para habilitar o mapa.</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                            <MapPinIcon className="h-4 w-4 text-sky-600" />
+                            Endereço de origem
+                          </label>
+                          <div className="relative">
+                            <Input
+                              value={travelDraft.origem}
+                              onChange={(e) => handleTravelDraftChange('origem', e.target.value)}
+                              placeholder="Rua, número, bairro, cidade"
+                              className="h-11"
+                              required
+                            />
+                            {travelOriginSuggestions.length > 0 && (
+                              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-auto rounded-md border border-graphite-200 bg-white shadow-lg">
+                                {travelOriginSuggestions.map((suggestion) => (
+                                  <button
+                                    key={`origem-${suggestion.placeId || suggestion.text}`}
+                                    type="button"
+                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-700 transition-colors hover:bg-graphite-50 last:border-b-0"
+                                    onClick={() => handleSelectTravelSuggestion('origem', suggestion)}
+                                  >
+                                    {suggestion.text}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                            <FlagIcon className="h-4 w-4 text-sky-600" />
+                            Endereço de destino
+                          </label>
+                          <div className="relative">
+                            <Input
+                              value={travelDraft.destino}
+                              onChange={(e) => handleTravelDraftChange('destino', e.target.value)}
+                              placeholder="Rua, número, bairro, cidade"
+                              className="h-11"
+                              required
+                            />
+                            {travelDestinationSuggestions.length > 0 && (
+                              <div className="absolute z-30 mt-1 max-h-48 w-full overflow-auto rounded-md border border-graphite-200 bg-white shadow-lg">
+                                {travelDestinationSuggestions.map((suggestion) => (
+                                  <button
+                                    key={`destino-${suggestion.placeId || suggestion.text}`}
+                                    type="button"
+                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-700 transition-colors hover:bg-graphite-50 last:border-b-0"
+                                    onClick={() => handleSelectTravelSuggestion('destino', suggestion)}
+                                  >
+                                    {suggestion.text}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {(travelAutocompleteLoading.origem || travelAutocompleteLoading.destino) && (
+                          <p className="text-xs text-graphite-500">Buscando sugestões de endereço...</p>
+                        )}
+                        {travelMapsConfigMissing && (
+                          <p className="text-xs text-amber-700">
+                            Maps não configurado no backend. Ajuste a chave Google em Configurações.
+                          </p>
+                        )}
+                        {travelAutocompleteError && (
+                          <p className="text-xs text-red-600">{travelAutocompleteError}</p>
+                        )}
+                        {travelKmError && <p className="text-xs text-red-600">{travelKmError}</p>}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-graphite-200 bg-white p-4 shadow-sm">
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                        Centro de Custo
+                      </label>
+                      <Select
+                        value={travelDraft.motivo}
+                        onValueChange={(value) => handleTravelDraftChange('motivo', value)}
+                        disabled={requestCentroLoading || travelRateioEnabled}
+                      >
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={
+                              requestCentroLoading ? 'Carregando centros de custo...' : 'Selecione um centro de custo'
+                            }
+                          />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {requestCentroLoading && (
+                            <SelectItem value="loading" disabled>
+                              Carregando...
+                            </SelectItem>
+                          )}
+                          {!requestCentroLoading && requestCentroOptions.length === 0 && (
+                            <SelectItem value="empty" disabled>
+                              Nenhum centro disponível
+                            </SelectItem>
+                          )}
+                          {!requestCentroLoading &&
+                            requestCentroOptions.map((opt) => (
+                              <SelectItem key={opt.codigo} value={opt.codigo}>
+                                {opt.codigo} - {opt.nome || 'Sem descrição'}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      {travelRateioEnabled && (
+                        <p className="mt-2 text-xs text-graphite-500">
+                          Campo desabilitado enquanto o rateio estiver habilitado.
+                        </p>
+                      )}
+                      {requestCentroError && <p className="mt-2 text-xs text-red-600">{requestCentroError}</p>}
+                    </div>
+
+                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-indigo-900">
+                        <input
+                          type="checkbox"
+                          checked={travelRateioEnabled}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setTravelRateioEnabled(checked);
+                            if (checked) {
+                              setTravelDraft((prev) => ({ ...prev, motivo: '' }));
+                            }
+                            setTravelRateioError('');
+                          }}
+                          className="h-4 w-4 rounded border-indigo-300 text-indigo-700 focus:ring-indigo-200"
+                        />
+                        Ratear valores entre centros de custo
+                      </label>
+                      <p className="mt-2 text-xs text-indigo-700">
+                        Quando habilitado, o sistema abrirá a próxima tela para distribuição por percentual.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/50 p-4 shadow-sm">
+                      <div className="mb-3 flex items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                            <BriefcaseIcon className="h-4 w-4 text-graphite-500" />
+                            Itens da viagem
+                          </p>
+                          <p className="text-xs text-graphite-500">
+                            Selecione os itens aplicáveis e informe os valores previstos.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleIncludeEstimatedKmItem}
+                            disabled={disableEstimatedInsertButtons}
+                          >
+                            Incluir KM estimado
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleIncludeEstimatedTollItem}
+                            disabled={disableEstimatedInsertButtons}
+                          >
+                            Adicionar pedágio estimado
+                          </Button>
+                          <Button variant="secondary" size="sm" onClick={handleAddTravelItem}>
+                            Adicionar item
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="hidden grid-cols-[minmax(150px,1fr)_120px_90px_120px_110px_36px] gap-2 rounded-md bg-graphite-100/70 px-2 py-2 text-xs font-medium text-graphite-600 sm:grid">
+                        <span>Item</span>
+                        <span className="text-right">Valor unitário (R$)</span>
+                        <span className="text-right">Qde.</span>
+                        <span className="text-right">Total</span>
+                        <span className="text-center">Anexar</span>
+                        <span />
+                      </div>
+                      <div className="space-y-2">
+                        {travelItems.map((entry, index) => (
+                          <div
+                            key={`travel-item-${index}`}
+                            className="grid grid-cols-1 gap-2 rounded-lg border border-graphite-200 bg-white px-2 py-2 shadow-[0_1px_0_rgba(15,23,42,0.04)] sm:grid-cols-[minmax(150px,1fr)_120px_90px_120px_110px_36px] sm:items-center"
+                          >
+                            <Select
+                              value={entry.item}
+                              onValueChange={(value) => handleTravelItemChange(index, 'item', value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione um item..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {TRAVEL_EXPENSE_ITEMS.map((option) => (
+                                  <SelectItem
+                                    key={option.value}
+                                    value={option.value}
+                                    disabled={travelItems.some(
+                                      (row, rowIndex) => rowIndex !== index && row.item === option.value
+                                    )}
+                                  >
+                                    {option.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <div className="relative">
+                              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-graphite-500">
+                                R$
+                              </span>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                placeholder="0,00"
+                                value={entry.valorUnitario}
+                                onChange={(e) => handleTravelItemChange(index, 'valorUnitario', e.target.value)}
+                                className="pl-8 text-right"
+                              />
+                            </div>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0,00"
+                              value={entry.quantidade}
+                              onChange={(e) => handleTravelItemChange(index, 'quantidade', e.target.value)}
+                              className="text-right"
+                            />
+                            <div className="rounded-md border border-graphite-200 bg-graphite-50 px-2 py-2 text-right text-sm font-medium text-graphite-800">
+                              R$ {getTravelItemLineTotal(entry).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </div>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleOpenTravelItemAttachment(entry.item)}
+                              disabled={
+                                !entry.item ||
+                                entry.item === 'KM estimado' ||
+                                !(Number(entry.valorUnitario) > 0) ||
+                                !(Number(entry.quantidade) > 0)
+                              }
+                              className="justify-center"
+                              title={
+                                entry.item === 'KM estimado'
+                                  ? 'Anexo indisponível para KM estimado'
+                                  : 'Preencha item, valor unitário e quantidade para anexar'
+                              }
+                            >
+                              <PaperClipIcon className="h-4 w-4" />
+                              {entry.item && travelItemAttachments[entry.item]
+                                ? `(${travelItemAttachments[entry.item].length})`
+                                : 'Anexar'}
+                            </Button>
+                            <button
+                              type="button"
+                              className="rounded-md p-2 text-graphite-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                              onClick={() => handleRemoveTravelItem(index)}
+                              disabled={travelItems.length === 1}
+                              title="Excluir item"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-right">
+                        <p className="text-xs uppercase tracking-wide text-emerald-700">Valor total</p>
+                        <p className="text-lg font-bold text-emerald-900">
+                          R$ {travelItemsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <input
+                        ref={travelItemFileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleTravelItemAttachmentUpload}
+                        className="hidden"
+                      />
+                    </div>
+
+                    <div className="space-y-2 rounded-xl border border-graphite-200 bg-white p-4">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                        Conferir anexos
+                      </label>
+                      <div className="space-y-2 rounded-lg border border-graphite-200 bg-graphite-50 p-3">
+                        {Object.keys(travelItemAttachments).length === 0 && (
+                          <p className="text-sm text-graphite-500">
+                            Nenhum anexo informado. Use o botão `Anexar` em cada item.
+                          </p>
+                        )}
+                        {Object.entries(travelItemAttachments).map(([itemName, files]) => (
+                          <div key={`attachments-${itemName}`} className="rounded-md border border-graphite-200 bg-white p-2">
+                            <p className="text-sm font-semibold text-graphite-800">{itemName}</p>
+                            <ul className="mt-1 space-y-1">
+                              {files.map((file, fileIndex) => (
+                                <li key={`${itemName}-${file.name}-${fileIndex}`} className="flex items-center justify-between text-sm text-graphite-600">
+                                  <span className="truncate">{file.name}</span>
+                                  <button
+                                    type="button"
+                                    className="ml-2 rounded px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+                                    onClick={() => handleRemoveTravelItemAttachment(itemName, fileIndex)}
+                                  >
+                                    Remover
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ))}
+                      </div>
+                      {travelUploadError && (
+                        <p className="text-xs text-red-600">{travelUploadError}</p>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-graphite-200 bg-white p-4">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Observação</label>
+                      <Textarea
+                        value={travelDraft.observacao}
+                        onChange={(e) => handleTravelDraftChange('observacao', e.target.value)}
+                        placeholder="Descreva objetivo da viagem, centros atendidos e justificativa."
+                        className="mt-2 min-h-[90px]"
+                      />
+                    </div>
+                  </div>
+                )}
+                {travelFormError && (
+                  <p className="mt-3 text-sm font-medium text-red-600">{travelFormError}</p>
+                )}
+                </div>
+
+                <DialogFooter>
+                  {travelDraft.tipoSolicitacao ? (
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" onClick={() => setTravelDraft(createTravelDraft())}>
+                        Voltar
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleIntegrateTravelWithRm}
+                        disabled={travelIntegrating || travelSaving || hasInvalidTravelDateRange}
+                      >
+                        {travelIntegrating ? 'Integrando...' : 'Integrar ao RM'}
+                      </Button>
+                      <Button
+                        onClick={travelRateioEnabled ? handleProceedToTravelRateio : handleSaveTravel}
+                        disabled={travelSaving || hasInvalidTravelDateRange}
+                      >
+                        {travelSaving
+                          ? 'Salvando...'
+                          : travelRateioEnabled
+                          ? 'Informar Rateio'
+                          : 'Salvar solicitação'}
+                      </Button>
+                    </div>
+                  ) : (
+                    <DialogClose asChild>
+                      <Button variant="outline">Cancelar</Button>
+                    </DialogClose>
+                  )}
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={travelMapDialogOpen} onOpenChange={setTravelMapDialogOpen}>
+              <DialogContent className="max-w-5xl">
+                <DialogHeader>
+                  <DialogTitle>Mapa do trajeto</DialogTitle>
+                  <DialogDescription>Visualização da rota entre origem e destino informados.</DialogDescription>
+                </DialogHeader>
+                {travelRouteMap.embedUrl ? (
+                  <div className="space-y-3">
+                    <div className="overflow-hidden rounded-lg border border-graphite-200">
+                      <iframe
+                        title="Mapa do trajeto"
+                        src={travelRouteMap.embedUrl}
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        className="h-[60vh] w-full bg-graphite-50"
+                      />
+                    </div>
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        onClick={() => window.open(travelRouteMap.externalUrl, '_blank', 'noopener,noreferrer')}
+                      >
+                        Abrir no Google Maps
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                    Informe origem e destino para visualizar o trajeto no mapa.
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog
+              open={travelRateioDialogOpen}
+              onOpenChange={(open) => {
+                setTravelRateioDialogOpen(open);
+                if (!open) setTravelRateioError('');
+              }}
+            >
+              <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                  <DialogTitle>Rateio por centro de custo</DialogTitle>
+                  <DialogDescription>Distribuição das despesas por percentual.</DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+                    Você habilitou a opção ratear valores, na próxima tela informe os valores de cada centro de custo
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-graphite-200 bg-graphite-50 p-3 sm:grid-cols-4">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-graphite-500">Valor total (itens)</p>
+                      <p className="text-lg font-bold text-graphite-900">
+                        R$ {Number(travelPendingSubmission?.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-graphite-500">Percentual rateado</p>
+                      <p
+                        className={`text-base font-semibold ${
+                          Math.abs(travelRateioTotalPercent - 100) <= 0.01 ? 'text-emerald-700' : 'text-amber-700'
+                        }`}
+                      >
+                        {travelRateioTotalPercent.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}%
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-graphite-500">Valor rateado</p>
+                      <p className="text-base font-semibold text-graphite-900">
+                        R$ {travelRateioTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-graphite-500">Diferença que falta</p>
+                      <p
+                        className={`text-base font-semibold ${
+                          Math.abs(travelRateioPercentDifference) <= 0.01 ? 'text-emerald-700' : 'text-red-700'
+                        }`}
+                      >
+                        {travelRateioPercentDifference.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% | R${' '}
+                        {travelRateioValueDifference.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="hidden grid-cols-[minmax(220px,1fr)_120px_130px_36px] gap-2 rounded-md bg-graphite-100 px-2 py-2 text-xs font-medium text-graphite-600 sm:grid">
+                      <span>Centro de custo</span>
+                      <span className="text-right">Percentual</span>
+                      <span className="text-right">Valor</span>
+                      <span />
+                    </div>
+                    {travelRateioLines.map((line, index) => {
+                      return (
+                        <div
+                          key={`rateio-line-${index}`}
+                          className="grid grid-cols-1 gap-2 rounded-lg border border-graphite-200 bg-white px-2 py-2 sm:grid-cols-[minmax(220px,1fr)_120px_130px_36px] sm:items-center"
+                        >
+                          <Select
+                            value={line.centroCusto}
+                            onValueChange={(value) => handleTravelRateioLineChange(index, 'centroCusto', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {requestCentroOptions.map((opt) => (
+                                <SelectItem key={`${opt.codigo}-${index}`} value={opt.codigo}>
+                                  {opt.codigo} - {opt.nome || 'Sem descrição'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={line.percentual}
+                            onChange={(e) => handleTravelRateioLineChange(index, 'percentual', e.target.value)}
+                            className="text-right"
+                          />
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={line.valor}
+                            onChange={(e) => handleTravelRateioLineChange(index, 'valor', e.target.value)}
+                            className="text-right"
+                          />
+                          <button
+                            type="button"
+                            className="rounded-md p-2 text-graphite-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                            onClick={() => handleRemoveTravelRateioLine(index)}
+                            disabled={travelRateioLines.length === 1}
+                            title="Excluir linha"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {travelRateioError && (
+                    <p className="text-sm text-red-600">{travelRateioError}</p>
+                  )}
+                </div>
+
+                <DialogFooter>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setTravelRateioDialogOpen(false);
+                        setTravelDialogOpen(true);
+                      }}
+                    >
+                      Voltar
+                    </Button>
+                    <Button variant="secondary" onClick={handleAddTravelRateioLine}>
+                      Adicionar centro
+                    </Button>
+                    <Button onClick={handleConfirmTravelRateio} disabled={travelSaving || !canSaveTravelRateio}>
+                      {travelSaving ? 'Salvando...' : 'Salvar rateio'}
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        );
+      }
+
       case 'relatorios': {
         const relatoriosColumns = [
           { key: 'relatorio', label: 'Relatório' },
@@ -2143,273 +4479,106 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       }
 
       case 'configuracoes': {
-        const configuracoesColumns = [
-          { key: 'parametro', label: 'Parâmetro' },
-          {
-            key: 'valor',
-            label: 'Valor',
-            cell: (row) => <span className="text-graphite-500">{row.valor}</span>,
-          },
-          {
-            key: 'status',
-            label: 'Status',
-            filterMode: 'select',
-            headerClassName: 'text-right',
-            cellClassName: 'text-right',
-          },
-        ];
-
         return (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg border border-graphite-200 p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div className="rounded-lg border border-graphite-200 bg-white p-6">
+              <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-semibold text-graphite-900">Configurações</h2>
-                  <p className="text-graphite-500">Parâmetros e perfis do sistema.</p>
+                  <h2 className="text-2xl font-semibold text-graphite-900">Configurações de Integração</h2>
+                  <p className="text-graphite-500">
+                    Centralize APIs e chaves em um único local (frontend + backend).
+                  </p>
                 </div>
-                <Button variant="secondary" size="default">Salvar alterações</Button>
+                <Button
+                  variant="default"
+                  onClick={handleSaveIntegrationConfig}
+                  disabled={integrationConfigSaving}
+                >
+                  {integrationConfigSaving ? 'Salvando...' : 'Salvar configurações'}
+                </Button>
               </div>
-              <Tabs defaultValue="requisicao">
-                <TabsList>
-                  <TabsTrigger value="requisicao">
-                    <span className="mr-2">Requisição</span>
-                    <Badge variant="secondary">Novo</Badge>
-                  </TabsTrigger>
-                  <TabsTrigger value="itens">Itens</TabsTrigger>
-                  <TabsTrigger value="anexos">Anexos</TabsTrigger>
-                  <TabsTrigger value="historico">Histórico</TabsTrigger>
-                  <TabsTrigger value="aprovacao">Aprovação</TabsTrigger>
-                </TabsList>
-                <TabsContent value="requisicao">
-                  <div className="mt-4">
-                    <Tabs defaultValue="criar-movimento">
-                      <div className="flex flex-col lg:flex-row gap-4">
-                        <div className="lg:w-60 w-full bg-white rounded-lg border border-graphite-200 p-4">
-                          <p className="text-xs font-semibold uppercase tracking-wide text-graphite-400 mb-3">
-                            Tipos de requisição
-                          </p>
-                          <TabsList className="grid gap-2">
-                            <TabsTrigger value="criar-movimento">Criar movimento</TabsTrigger>
-                            <TabsTrigger value="requisicao-material">Requisição de material</TabsTrigger>
-                            <TabsTrigger value="requisicao-servico">Requisição de serviço</TabsTrigger>
-                          </TabsList>
-                        </div>
 
-                        <div className="flex-1 min-w-0 space-y-4">
-                        <TabsContent value="criar-movimento">
-                          <div className="bg-white rounded-lg border border-graphite-200 p-5">
-                            <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                              <div>
-                                <h3 className="text-lg font-semibold text-graphite-900">
-                                  Campos enviados na requisição
-                                </h3>
-                                <p className="text-sm text-graphite-500">
-                                  Envie obrigatórios + Itens + Pagamentos.
-                                </p>
-                              </div>
-                              <Button variant="secondary" size="sm">Aplicar</Button>
-                            </div>
-
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                <div className="rounded-md border border-graphite-200 p-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-semibold text-graphite-900">Cabeçalho</h4>
-                                    <Badge variant="secondary">Obrigatórios</Badge>
-                                  </div>
-                                  <div className="text-xs text-graphite-500 space-y-1">
-                                    {['InternalId', 'CompanyId', 'MovementId', 'Status', 'AplicationIntegration'].map((field) => (
-                                      <div key={field} className="flex items-center justify-between">
-                                        <span className="font-mono text-graphite-700">{field}</span>
-                                        <span>required</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="mt-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">
-                                      Opcionais
-                                    </p>
-                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {[
-                                        { id: 'BranchId', label: 'BranchId' },
-                                        { id: 'WarehouseCode', label: 'WarehouseCode' },
-                                        { id: 'DeliveryWarehouseCode', label: 'DeliveryWarehouseCode' },
-                                        { id: 'DestinyWarehouseCode', label: 'DestinyWarehouseCode' },
-                                        { id: 'CustomerVendorCompanyId', label: 'CustomerVendorCompanyId' },
-                                        { id: 'CustomerVendorCode', label: 'CustomerVendorCode' },
-                                        { id: 'Number', label: 'Number' },
-                                        { id: 'Series', label: 'Series' },
-                                        { id: 'MovementTypeCode', label: 'MovementTypeCode' },
-                                        { id: 'Type', label: 'Type' },
-                                        { id: 'Date', label: 'Date' },
-                                      ].map((field) => (
-                                        <label
-                                          key={field.id}
-                                          className="flex items-center justify-between gap-3 rounded-md border border-graphite-200 px-3 py-2"
-                                        >
-                                          <span className="text-sm text-graphite-700">{field.label}</span>
-                                          <input
-                                            type="checkbox"
-                                            checked={requestFieldConfig.header[field.id]}
-                                            onChange={(event) => updateRequestHeaderField(field.id, event.target.checked)}
-                                            className="h-4 w-4 rounded border-graphite-300 text-graphite-900 focus:ring-graphite-200"
-                                          />
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="rounded-md border border-graphite-200 p-4">
-                                  <div className="flex items-center justify-between mb-3">
-                                    <h4 className="text-sm font-semibold text-graphite-900">Items</h4>
-                                    <Badge variant="secondary">Obrigatórios</Badge>
-                                  </div>
-                                  <div className="text-xs text-graphite-500 space-y-1">
-                                    {['CompanyId', 'MovementId', 'SequentialId', 'SequentialNumber', 'IsSubstituteProduct', 'AplicationIntegration'].map((field) => (
-                                      <div key={field} className="flex items-center justify-between">
-                                        <span className="font-mono text-graphite-700">{field}</span>
-                                        <span>required</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                  <div className="mt-4">
-                                    <p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">
-                                      Opcionais
-                                    </p>
-                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                      {[
-                                        { id: 'ProductId', label: 'ProductId' },
-                                        { id: 'Quantity', label: 'Quantity' },
-                                        { id: 'UnitPrice', label: 'UnitPrice' },
-                                      ].map((field) => (
-                                        <label
-                                          key={field.id}
-                                          className="flex items-center justify-between gap-3 rounded-md border border-graphite-200 px-3 py-2"
-                                        >
-                                          <span className="text-sm text-graphite-700">{field.label}</span>
-                                          <input
-                                            type="checkbox"
-                                            checked={requestFieldConfig.items[field.id]}
-                                            onChange={(event) => updateRequestItemField(field.id, event.target.checked)}
-                                            className="h-4 w-4 rounded border-graphite-300 text-graphite-900 focus:ring-graphite-200"
-                                          />
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="rounded-md border border-graphite-200 p-4">
-                                <div className="flex items-center justify-between mb-3">
-                                  <h4 className="text-sm font-semibold text-graphite-900">Payments</h4>
-                                  <Badge variant="secondary">Obrigatórios</Badge>
-                                </div>
-                                <div className="text-xs text-graphite-500 space-y-1">
-                                  {['CompanyId', 'PaymentSequentialId', 'MovementId', 'DebitCredit'].map((field) => (
-                                    <div key={field} className="flex items-center justify-between">
-                                      <span className="font-mono text-graphite-700">{field}</span>
-                                      <span>required</span>
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="mt-4">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-graphite-400">
-                                    Opcionais
-                                  </p>
-                                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                    {[
-                                      { id: 'Value', label: 'Value' },
-                                      { id: 'PaymentType', label: 'PaymentType' },
-                                      { id: 'DueDate', label: 'DueDate' },
-                                    ].map((field) => (
-                                      <label
-                                        key={field.id}
-                                        className="flex items-center justify-between gap-3 rounded-md border border-graphite-200 px-3 py-2"
-                                      >
-                                        <span className="text-sm text-graphite-700">{field.label}</span>
-                                        <input
-                                          type="checkbox"
-                                          checked={requestFieldConfig.payments[field.id]}
-                                          onChange={(event) => updateRequestPaymentField(field.id, event.target.checked)}
-                                          className="h-4 w-4 rounded border-graphite-300 text-graphite-900 focus:ring-graphite-200"
-                                        />
-                                      </label>
-                                    ))}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                            <div className="bg-white rounded-lg border border-graphite-200 p-5">
-                              <div className="flex items-center justify-between mb-3">
-                                <div>
-                                  <h4 className="text-sm font-semibold text-graphite-900">Prévia JSON</h4>
-                                  <p className="text-xs text-graphite-500">Campos ativos serão enviados.</p>
-                                </div>
-                                <Badge variant="secondary">POST</Badge>
-                              </div>
-                              <pre className="bg-graphite-900 text-graphite-100 text-xs rounded-md p-4 overflow-auto">
-                                {JSON.stringify(buildRequestPayloadPreview(), null, 2)}
-                              </pre>
-                            </div>
-                          </TabsContent>
-
-                          <TabsContent value="requisicao-material">
-                            <div className="rounded-md border border-graphite-200 p-4 text-sm text-graphite-600">
-                              Em breve: configuração específica para requisição de material.
-                            </div>
-                          </TabsContent>
-
-                          <TabsContent value="requisicao-servico">
-                            <div className="rounded-md border border-graphite-200 p-4 text-sm text-graphite-600">
-                              Em breve: configuração específica para requisição de serviço.
-                            </div>
-                          </TabsContent>
-                        </div>
-                      </div>
-                    </Tabs>
-                  </div>
-                </TabsContent>
-                <TabsContent value="itens">
-                  <div className="mt-4">
-                    <DataTable
-                      columns={configuracoesColumns}
-                      data={configuracoesData}
-                      emptyMessage="Nenhuma configuração para os filtros selecionados."
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                    URL do backend
+                  </label>
+                  <Input
+                    value={integrationConfig.backendBaseUrl}
+                    onChange={(e) => handleIntegrationConfigChange('backendBaseUrl', e.target.value)}
+                    placeholder="http://localhost:8787"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                    URL da API RM
+                  </label>
+                  <Input
+                    value={integrationConfig.rmApiBaseUrl}
+                    onChange={(e) => handleIntegrationConfigChange('rmApiBaseUrl', e.target.value)}
+                    placeholder="http://servidor-rm:8051"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                    Endpoint usuários RM
+                  </label>
+                  <Input
+                    value={integrationConfig.rmAuthUsersPath}
+                    onChange={(e) => handleIntegrationConfigChange('rmAuthUsersPath', e.target.value)}
+                    placeholder="/api/framework/v1/users"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                    Endpoint Consulta SQL RM
+                  </label>
+                  <Input
+                    value={integrationConfig.rmConsultaBasePath}
+                    onChange={(e) => handleIntegrationConfigChange('rmConsultaBasePath', e.target.value)}
+                    placeholder="/api/framework/v1/consultaSQLServer/RealizaConsulta"
+                  />
+                </div>
+                <div className="space-y-1 md:col-span-2">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                    Chave Google Maps (Routes/Places)
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type={showGoogleApiKey ? 'text' : 'password'}
+                      value={integrationConfig.googleMapsApiKey}
+                      onChange={(e) => handleIntegrationConfigChange('googleMapsApiKey', e.target.value)}
+                      placeholder="Cole aqui a chave da API"
+                      className="pr-10"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowGoogleApiKey((prev) => !prev)}
+                      className="absolute inset-y-0 right-0 inline-flex items-center px-3 text-graphite-500 transition-colors hover:text-graphite-700"
+                      aria-label={showGoogleApiKey ? 'Ocultar chave' : 'Exibir chave'}
+                      title={showGoogleApiKey ? 'Ocultar chave' : 'Exibir chave'}
+                    >
+                      {showGoogleApiKey ? (
+                        <EyeSlashIcon className="h-4 w-4" />
+                      ) : (
+                        <EyeIcon className="h-4 w-4" />
+                      )}
+                    </button>
                   </div>
-                </TabsContent>
-                <TabsContent value="anexos">
-                  <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <PaperClipIcon className="h-5 w-5 text-graphite-400" />
-                      Nenhum anexo. Adicione políticas ou documentos de suporte.
-                    </div>
-                    <Button variant="secondary" size="sm">Adicionar arquivo</Button>
-                  </div>
-                </TabsContent>
-                <TabsContent value="historico">
-                  <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <ClockIcon className="h-5 w-5 text-graphite-400" />
-                      Histórico de ajustes ficará disponível aqui.
-                    </div>
-                    <Button variant="ghost" size="sm">Ver histórico</Button>
-                  </div>
-                </TabsContent>
-                <TabsContent value="aprovacao">
-                  <div className="mt-4 border border-graphite-200 rounded-md p-4 flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 text-sm text-graphite-600">
-                      <CheckCircleIcon className="h-5 w-5 text-graphite-400" />
-                      Aprovação pendente para mudanças sensíveis.
-                    </div>
-                    <Button variant="secondary" size="sm">Solicitar aprovação</Button>
-                  </div>
-                </TabsContent>
-              </Tabs>
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-1">
+                {integrationConfigStatus && (
+                  <p className="text-sm text-emerald-600">{integrationConfigStatus}</p>
+                )}
+                {integrationConfigError && (
+                  <p className="text-sm text-red-600">{integrationConfigError}</p>
+                )}
+                <p className="text-xs text-graphite-500">
+                  Esta configuração é temporária e local. Depois você pode migrar para perfil Admin.
+                </p>
+              </div>
             </div>
           </div>
         );
@@ -2432,7 +4601,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
 
           <div className="relative flex-1 overflow-y-auto pr-1">
             {requestLookupsLoading && (
-              <div className="absolute inset-0 z-10 rounded-lg bg-white/80 dark:bg-black/70 backdrop-blur-[1px]">
+              <div className="absolute inset-0 z-10 rounded-lg bg-white/80 dark:bg-graphite-950/65 backdrop-blur-[1px]">
                 <div className="p-6 space-y-4 animate-pulse">
                   <div className="h-5 w-40 bg-graphite-200 rounded-md" />
                   <div className="h-24 w-full bg-graphite-200 rounded-lg" />
@@ -2453,7 +4622,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
                   <div className="h-2 w-full bg-graphite-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-black dark:bg-white transition-all"
+                      className="h-full bg-black dark:bg-graphite-200 transition-all"
                       style={{ width: `${requestProgress}%` }}
                     />
                   </div>

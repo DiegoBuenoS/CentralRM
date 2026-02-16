@@ -137,20 +137,28 @@ cp .env.example .env.local
 Edite o arquivo `.env.local` com suas configurações:
 
 ```env
-# URL da API TOTVS RM
-VITE_API_BASE_URL=http://seu-servidor:8051
+# URL da API TOTVS RM (usada pelo backend)
+RM_API_BASE_URL=http://seu-servidor:8051
+RM_AUTH_USERS_PATH=/api/framework/v1/users
+RM_CONSULTA_BASE_PATH=/api/framework/v1/consultaSQLServer/RealizaConsulta
 
 # Contexto (código da empresa/coligada)
 VITE_CONTEXT=1
 
-# Ambiente
-MODE=development
+# URL do backend local
+VITE_BACKEND_BASE_URL=http://localhost:8787
+
+# Chave do Google Routes (server-side)
+GOOGLE_MAPS_API_KEY=sua-chave
+
+# Origem permitida no backend (CORS)
+FRONTEND_ORIGIN=http://localhost:5173
 ```
 
 ### 4. Inicie o servidor de desenvolvimento
 
 ```bash
-npm run dev
+npm run dev:full
 ```
 
 Acesse: http://localhost:5173
@@ -163,9 +171,13 @@ Acesse: http://localhost:5173
 
 | Variável | Descrição | Padrão | Obrigatório |
 |----------|-----------|--------|-------------|
-| `VITE_API_BASE_URL` | URL base da API TOTVS RM | `http://localhost:8051` | ✅ |
+| `RM_API_BASE_URL` | URL base da API TOTVS RM (backend) | `http://localhost:8051` | ✅ |
+| `RM_AUTH_USERS_PATH` | Endpoint de usuários RM | `/api/framework/v1/users` | ✅ |
+| `RM_CONSULTA_BASE_PATH` | Endpoint de Consulta SQL RM | `/api/framework/v1/consultaSQLServer/RealizaConsulta` | ✅ |
 | `VITE_CONTEXT` | Contexto/Coligada | `1` | ✅ |
-| `MODE` | Ambiente de execução | `development` | ❌ |
+| `VITE_BACKEND_BASE_URL` | URL do backend da aplicação | `http://localhost:8787` | ✅ |
+| `GOOGLE_MAPS_API_KEY` | Chave Google Maps no backend (Routes + Places Autocomplete) | - | ✅ |
+| `FRONTEND_ORIGIN` | Origem liberada no CORS do backend | `http://localhost:5173` | ✅ |
 
 ### Endpoints da API
 
@@ -228,8 +240,14 @@ No front, o helper monta a URL com base no `API_CONFIG.CONSULTA_SQL`.
 ### Desenvolvimento
 
 ```bash
-# Iniciar servidor de desenvolvimento
+# Iniciar frontend + backend
+npm run dev:full
+
+# Iniciar apenas frontend
 npm run dev
+
+# Iniciar apenas backend
+npm run dev:server
 
 # Executar testes
 npm run test

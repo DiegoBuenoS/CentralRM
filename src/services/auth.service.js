@@ -5,23 +5,26 @@ import apiClient from './apiClient';
 
 export const loginUser = async (username, password) => {
   try {
-    const credentials = btoa(`${username}:${password}`);
-
-    const response = await apiClient.get(`${API_CONFIG.AUTH.USERS}/${username}`, {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-      },
+    const response = await apiClient.post(API_CONFIG.AUTH.LOGIN, {
+      username,
+      password,
     });
 
-    localStorage.setItem('username', username);
-    localStorage.setItem('password', password);
-    localStorage.setItem('user_data', JSON.stringify(response.data));
-
-    if (API_CONFIG.GENERAL.DEBUG) {
-      console.log('Login bem-sucedido:', response.data);
+    const token = response?.data?.token;
+    const user = response?.data?.user;
+    if (!token || !user) {
+      throw new Error('Resposta inválida do backend no login.');
     }
 
-    return response.data;
+    localStorage.setItem('session_token', token);
+    localStorage.setItem('username', username);
+    localStorage.setItem('user_data', JSON.stringify(user));
+
+    if (API_CONFIG.GENERAL.DEBUG) {
+      console.log('Login bem-sucedido:', user);
+    }
+
+    return user;
   } catch (error) {
     if (API_CONFIG.GENERAL.DEBUG) {
       console.error('Erro ao fazer login:', error);
@@ -32,8 +35,16 @@ export const loginUser = async (username, password) => {
 
 export const logoutUser = async () => {
   try {
+    if (localStorage.getItem('session_token')) {
+      await apiClient.post(API_CONFIG.AUTH.LOGOUT);
+    }
+  } catch {
+    // Continua limpando sessão local mesmo em falha remota.
+  }
+
+  try {
+    localStorage.removeItem('session_token');
     localStorage.removeItem('username');
-    localStorage.removeItem('password');
     localStorage.removeItem('user_data');
 
     if (API_CONFIG.GENERAL.DEBUG) {
@@ -45,8 +56,8 @@ export const logoutUser = async () => {
     if (API_CONFIG.GENERAL.DEBUG) {
       console.error('Erro ao fazer logout:', error);
     }
+    localStorage.removeItem('session_token');
     localStorage.removeItem('username');
-    localStorage.removeItem('password');
     localStorage.removeItem('user_data');
     throw error;
   }
@@ -54,13 +65,12 @@ export const logoutUser = async () => {
 
 export const getUserInfo = async () => {
   try {
-    const username = localStorage.getItem('username');
-
-    if (!username) {
+    const token = localStorage.getItem('session_token');
+    if (!token) {
       throw new Error('Usuário não autenticado');
     }
 
-    const response = await apiClient.get(`${API_CONFIG.AUTH.USERS}/${username}`);
+    const response = await apiClient.get(API_CONFIG.AUTH.ME);
 
     if (API_CONFIG.GENERAL.DEBUG) {
       console.log('Informações do usuário:', response.data);
@@ -76,7 +86,6 @@ export const getUserInfo = async () => {
 };
 
 export const isAuthenticated = () => {
-  const username = localStorage.getItem('username');
-  const password = localStorage.getItem('password');
-  return !!(username && password);
+  const sessionToken = localStorage.getItem('session_token');
+  return !!sessionToken;
 };

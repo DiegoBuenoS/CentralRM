@@ -2,12 +2,13 @@
 
 const API_CONFIG = {
   // Base URL
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://dbs.brazilsouth.cloudapp.azure.com:8051',
+  BASE_URL: import.meta.env.VITE_BACKEND_BASE_URL || 'http://localhost:8787',
 
   // Endpoints
   AUTH: {
-    USERS: '/api/framework/v1/users',
-    LOGIN: '/api/framework/v1/users',
+    LOGIN: '/api/auth/login',
+    LOGOUT: '/api/auth/logout',
+    ME: '/api/auth/me',
   },
 
   // Auth
@@ -23,6 +24,7 @@ const API_CONFIG = {
   // Consulta SQL
   CONSULTA_SQL: {
     BASE_PATH: '/api/framework/v1/consultaSQLServer/RealizaConsulta',
+    BACKEND_ENDPOINT: '/api/rm/consulta-sql',
     COD_COLIGADA_PATH: 0,
     COD_SISTEMA: 'G',
     COD_COLIGADA_PARAM: 1,

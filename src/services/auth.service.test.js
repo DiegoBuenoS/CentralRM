@@ -6,6 +6,7 @@ import apiClient from './apiClient';
 
 vi.mock('./apiClient', () => ({
   default: {
+    post: vi.fn(),
     get: vi.fn(),
   },
 }));
@@ -27,28 +28,31 @@ describe('Serviço de Auth', () => {
     it('deve fazer login com credenciais válidas', async () => {
       const mockResponse = {
         data: {
-          id: '123',
-          name: 'Usuário Teste',
+          token: 'session-token-1',
+          user: {
+            id: '123',
+            name: 'Usuário Teste',
+          },
         },
       };
 
-      apiClient.get.mockResolvedValue(mockResponse);
+      apiClient.post.mockResolvedValue(mockResponse);
 
       const result = await loginUser('usuario@email.com', 'senha123');
 
-      expect(result).toEqual(mockResponse.data);
+      expect(result).toEqual(mockResponse.data.user);
+      expect(localStorage.setItem).toHaveBeenCalledWith('session_token', 'session-token-1');
       expect(localStorage.setItem).toHaveBeenCalledWith('username', 'usuario@email.com');
-      expect(localStorage.setItem).toHaveBeenCalledWith('password', 'senha123');
       expect(localStorage.setItem).toHaveBeenCalledWith(
         'user_data',
-        JSON.stringify(mockResponse.data)
+        JSON.stringify(mockResponse.data.user)
       );
     });
 
     it('deve lançar erro com credenciais inválidas', async () => {
       const mockError = new Error('Credenciais inválidas');
 
-      apiClient.get.mockRejectedValue(mockError);
+      apiClient.post.mockRejectedValue(mockError);
 
       await expect(loginUser('usuario@email.com', 'senha_errada')).rejects.toThrow();
     });
@@ -57,14 +61,15 @@ describe('Serviço de Auth', () => {
   describe('logoutUser', () => {
     it('deve fazer logout com sucesso', async () => {
       localStorage.setItem('username', 'usuario@email.com');
-      localStorage.setItem('password', 'senha123');
+      localStorage.setItem('session_token', 'session-token-1');
       localStorage.setItem('user_data', JSON.stringify({ id: '123' }));
+      apiClient.post.mockResolvedValue({ data: { success: true } });
 
       const result = await logoutUser();
 
       expect(result).toBe(true);
+      expect(localStorage.removeItem).toHaveBeenCalledWith('session_token');
       expect(localStorage.removeItem).toHaveBeenCalledWith('username');
-      expect(localStorage.removeItem).toHaveBeenCalledWith('password');
       expect(localStorage.removeItem).toHaveBeenCalledWith('user_data');
     });
   });
@@ -79,7 +84,9 @@ describe('Serviço de Auth', () => {
         },
       };
 
-      localStorage.getItem = vi.fn().mockReturnValue('usuario@email.com');
+      localStorage.getItem = vi.fn((key) =>
+        key === 'session_token' ? 'session-token-1' : null
+      );
       apiClient.get.mockResolvedValue(mockResponse);
 
       const result = await getUserInfo();

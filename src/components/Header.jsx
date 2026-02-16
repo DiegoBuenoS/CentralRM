@@ -6,7 +6,7 @@ import {
   BellIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline';
-import { Input } from './ui/input';
+import { Input } from './ui/Input';
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -55,22 +55,22 @@ const Header = ({
   return (
     <header
       className={`
-        ${sidebarCollapsed ? 'ml-20' : 'ml-64'}
+        ${sidebarCollapsed ? 'ml-[4.5rem]' : 'ml-60'}
         fixed top-0 right-0
         bg-white border-b border-graphite-200
-        dark:bg-black dark:border-graphite-800
+        dark:bg-graphite-950 dark:border-graphite-700
         transition-all duration-300
         z-40
         shadow-sm
-        h-20
+        h-16
       `}
-      style={{ width: sidebarCollapsed ? 'calc(100% - 5rem)' : 'calc(100% - 16rem)' }}
+      style={{ width: sidebarCollapsed ? 'calc(100% - 4.5rem)' : 'calc(100% - 15rem)' }}
     >
-      <div className="px-6 h-full">
-        <div className="flex items-center justify-between gap-6 h-full">
+      <div className="px-5 h-full">
+        <div className="flex items-center justify-between gap-4 h-full">
           <div>
             <Breadcrumb>
-              <BreadcrumbList>
+              <BreadcrumbList className="text-xs tracking-tight text-graphite-500 dark:text-graphite-300">
                 {breadcrumb.map((item, index) => {
                   const isLast = index === breadcrumb.length - 1;
                   return (
@@ -88,15 +88,15 @@ const Header = ({
                 })}
               </BreadcrumbList>
             </Breadcrumb>
-            <h1 className="text-2xl font-semibold text-graphite-900 dark:text-graphite-50">{title}</h1>
+            <h1 className="text-[1.32rem] font-semibold tracking-tight leading-tight text-graphite-900 dark:text-graphite-50">{title}</h1>
           </div>
 
-          <div className="flex items-center space-x-4 pt-1">
+          <div className="flex items-center space-x-3">
             <div className="relative hidden md:block">
               <Input
                 type="text"
                 placeholder="Buscar..."
-                className="pl-10 pr-4 w-64 text-sm text-graphite-700 bg-white dark:bg-black dark:text-graphite-100"
+                className="pl-9 pr-3 w-56 text-[13px] tracking-tight text-graphite-700 bg-white dark:bg-graphite-900 dark:text-graphite-100"
               />
               <MagnifyingGlassIcon
                 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400 dark:text-graphite-300"
@@ -111,7 +111,7 @@ const Header = ({
                 title="Notificações"
               >
                 <BellIcon className="h-5 w-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-black rounded-full dark:bg-white"></span>
+                <span className="absolute top-1 right-1 w-2 h-2 bg-black rounded-full dark:bg-cyan-300"></span>
               </button>
               <div className="absolute right-0 mt-2 w-72 rounded-md border border-graphite-200 bg-white shadow-sm opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all dark:border-graphite-700 dark:bg-graphite-900">
                 <div className="px-3 py-2 text-xs font-medium text-graphite-500 border-b border-graphite-100 dark:text-graphite-300 dark:border-graphite-700">
@@ -123,17 +123,17 @@ const Header = ({
               </div>
             </div>
 
-            <div className="flex items-center space-x-3 pl-4 border-l border-graphite-200 dark:border-graphite-700">
+            <div className="flex items-center space-x-2.5 pl-3 border-l border-graphite-200 dark:border-graphite-700">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium text-graphite-900 dark:text-graphite-50">
                   {getUserName()}
                 </p>
-                <p className="text-xs text-graphite-500 dark:text-graphite-300">
+                <p className="text-[11px] tracking-tight text-graphite-500 dark:text-graphite-300">
                   Código: <span className="font-mono font-semibold">{getUserCode()}</span>
                 </p>
               </div>
-              <div className="w-9 h-9 bg-black rounded-full flex items-center justify-center dark:bg-white">
-                <UserCircleIcon className="h-5 w-5 text-white dark:text-black" />
+              <div className="w-8 h-8 bg-black rounded-full flex items-center justify-center dark:bg-graphite-200">
+                <UserCircleIcon className="h-5 w-5 text-white dark:text-graphite-900" />
               </div>
             </div>
           </div>

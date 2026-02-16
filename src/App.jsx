@@ -1,11 +1,12 @@
 // App
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
 import { isAuthenticated } from './services';
 import './index.css';
+
+const LoginPage = React.lazy(() => import('./pages/LoginPage'));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
 
 // Auth guard
 const ProtectedRoute = ({ children }) => {
@@ -19,15 +20,22 @@ const PublicRoute = ({ children }) => {
 
 function App() {
   return (
-    <Routes>
-      <Route
-        path="/"
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-      />
+    <Suspense
+      fallback={
+        <div className="min-h-screen grid place-items-center text-sm text-graphite-500">
+          Carregando...
+        </div>
+      }
+    >
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
+          }
+        />
 
       <Route
         path="/dashboard"
@@ -61,6 +69,15 @@ function App() {
         element={
           <ProtectedRoute>
             <DashboardPage initialPage="notas-fiscais" />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/despesas-viagens"
+        element={
+          <ProtectedRoute>
+            <DashboardPage initialPage="despesas-viagens" />
           </ProtectedRoute>
         }
       />
@@ -164,8 +181,9 @@ function App() {
         }
       />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 

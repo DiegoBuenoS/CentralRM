@@ -6,14 +6,14 @@ const Table = React.forwardRef(({ className, ...props }, ref) => (
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn("w-full caption-bottom text-sm text-graphite-800 dark:text-graphite-200", className)}
       {...props} />
   </div>
 ))
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-graphite-200 dark:[&_tr]:border-graphite-700", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -37,7 +37,7 @@ const TableRow = React.forwardRef(({ className, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+      "border-b border-graphite-100 transition-colors hover:bg-graphite-50 data-[state=selected]:bg-graphite-100 dark:border-graphite-700 dark:hover:bg-graphite-800/60 dark:data-[state=selected]:bg-graphite-800/80",
       className
     )}
     {...props} />
@@ -48,7 +48,7 @@ const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      "h-10 px-2 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-graphite-500 dark:text-graphite-300 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props} />
@@ -59,7 +59,7 @@ const TableCell = React.forwardRef(({ className, ...props }, ref) => (
   <td
     ref={ref}
     className={cn(
-      "p-2 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "p-3 align-middle [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props} />
