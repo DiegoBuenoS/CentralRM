@@ -15,6 +15,8 @@ const ALLOWED_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:5173';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const BACKEND_CONFIG_FILE =
   process.env.BACKEND_CONFIG_FILE || path.join(__dirname, 'runtime-config.json');
+const BACKEND_SECRETS_FILE =
+  process.env.BACKEND_SECRETS_FILE || path.join(__dirname, 'runtime-secrets.json');
 const TRAVEL_REQUESTS_FILE =
   process.env.TRAVEL_REQUESTS_FILE || path.join(__dirname, 'travel-requests.json');
 const TRAVEL_REQUESTS_MAX = Math.max(
@@ -38,6 +40,7 @@ const INTEGRATION_STATUS = Object.freeze({
   INTEGRADO: 'INTEGRADO',
 });
 const VALID_INTEGRATION_STATUS = new Set(Object.values(INTEGRATION_STATUS));
+const VALID_LOCAL_USER_ROLES = new Set(['Administrador', 'Financeiro', 'Gestor']);
 const travelRequests = [];
 const appUsers = [];
 const googleApiKeys = [];
@@ -125,6 +128,7 @@ const extractUserProfile = (username, rmData) => {
     username: normalizedUsername,
     displayName: formattedName,
     email,
+    role: 'Financeiro',
     rmUserId,
     isActive,
   };
@@ -134,6 +138,21 @@ const maskApiKeyPreview = (value) => {
   if (!text) return '';
   if (text.length <= 8) return '••••••••';
   return `${text.slice(0, 6)}••••••••••${text.slice(-2)}`;
+};
+
+const assignRuntimeConfig = (target, source = {}) => {
+  if (!source || typeof source !== 'object') return target;
+  if (source.rmApiBaseUrl !== undefined) target.rmApiBaseUrl = String(source.rmApiBaseUrl).trim();
+  if (source.rmAuthUsersPath !== undefined) {
+    target.rmAuthUsersPath = String(source.rmAuthUsersPath).trim();
+  }
+  if (source.rmConsultaBasePath !== undefined) {
+    target.rmConsultaBasePath = String(source.rmConsultaBasePath).trim();
+  }
+  if (source.googleMapsApiKey !== undefined) {
+    target.googleMapsApiKey = String(source.googleMapsApiKey).trim();
+  }
+  return target;
 };
 
 const initDatabase = async () => {
@@ -171,6 +190,7 @@ const initDatabase = async () => {
       username TEXT PRIMARY KEY,
       display_name TEXT NOT NULL,
       email TEXT NULL,
+      role TEXT NOT NULL DEFAULT 'Financeiro',
       rm_user_id TEXT NULL,
       is_active BOOLEAN NOT NULL DEFAULT TRUE,
       last_login_at TIMESTAMPTZ NULL,
@@ -181,6 +201,9 @@ const initDatabase = async () => {
   `);
   await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_app_users_email ON app_users (email)`
+  );
+  await pool.query(
+    `ALTER TABLE app_users ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'Financeiro'`
   );
   await pool.query(
     `CREATE INDEX IF NOT EXISTS idx_app_users_rm_user_id ON app_users (rm_user_id)`
@@ -214,6 +237,7 @@ const upsertLocalUser = async ({ username, rmData }) => {
       username: profile.username,
       display_name: profile.displayName,
       email: profile.email,
+      role: profile.role,
       rm_user_id: profile.rmUserId,
       is_active: profile.isActive,
       last_login_at: nowIso,
@@ -232,16 +256,17 @@ const upsertLocalUser = async ({ username, rmData }) => {
   await pool.query(
     `
       INSERT INTO app_users (
-        username, display_name, email, rm_user_id, is_active,
+        username, display_name, email, role, rm_user_id, is_active,
         last_login_at, raw_profile, created_at, updated_at
       )
       VALUES (
-        $1, $2, $3, $4, $5,
-        $6::timestamptz, $7::jsonb, $8::timestamptz, $9::timestamptz
+        $1, $2, $3, $4, $5, $6,
+        $7::timestamptz, $8::jsonb, $9::timestamptz, $10::timestamptz
       )
       ON CONFLICT (username) DO UPDATE SET
         display_name = EXCLUDED.display_name,
         email = EXCLUDED.email,
+        role = EXCLUDED.role,
         rm_user_id = EXCLUDED.rm_user_id,
         is_active = EXCLUDED.is_active,
         last_login_at = EXCLUDED.last_login_at,
@@ -252,6 +277,7 @@ const upsertLocalUser = async ({ username, rmData }) => {
       profile.username,
       profile.displayName,
       profile.email,
+      profile.role,
       profile.rmUserId,
       profile.isActive,
       nowIso,
@@ -271,6 +297,7 @@ const listLocalUsers = async () => {
         username: row.username,
         displayName: row.display_name,
         email: row.email,
+        role: row.role || 'Financeiro',
         rmUserId: row.rm_user_id,
         isActive: Boolean(row.is_active),
         lastLoginAt: row.last_login_at,
@@ -281,7 +308,7 @@ const listLocalUsers = async () => {
 
   const { rows } = await pool.query(`
     SELECT
-      username, display_name, email, rm_user_id, is_active,
+      username, display_name, email, role, rm_user_id, is_active,
       last_login_at, created_at, updated_at
     FROM app_users
     ORDER BY updated_at DESC
@@ -291,6 +318,7 @@ const listLocalUsers = async () => {
     username: row.username,
     displayName: row.display_name,
     email: row.email,
+    role: row.role || 'Financeiro',
     rmUserId: row.rm_user_id,
     isActive: Boolean(row.is_active),
     lastLoginAt: row.last_login_at ? new Date(row.last_login_at).toISOString() : null,
@@ -303,6 +331,8 @@ const createLocalUser = async (payload = {}) => {
   const username = normalizeText(payload.username, 80).toLowerCase();
   const displayName = normalizeText(payload.displayName, 160);
   const email = normalizeNullableText(payload.email, 200);
+  const requestedRole = normalizeText(payload.role, 40);
+  const role = VALID_LOCAL_USER_ROLES.has(requestedRole) ? requestedRole : 'Financeiro';
   const rmUserId = normalizeNullableText(payload.rmUserId, 120);
   const isActive = parseBoolean(payload.isActive, true);
   if (!username || !displayName || !email) {
@@ -318,6 +348,7 @@ const createLocalUser = async (payload = {}) => {
       username,
       display_name: displayName,
       email,
+      role,
       rm_user_id: rmUserId,
       is_active: isActive,
       last_login_at: null,
@@ -338,12 +369,12 @@ const createLocalUser = async (payload = {}) => {
   await pool.query(
     `
       INSERT INTO app_users (
-        username, display_name, email, rm_user_id, is_active,
+        username, display_name, email, role, rm_user_id, is_active,
         last_login_at, raw_profile, created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, NULL, '{}'::jsonb, $6::timestamptz, $7::timestamptz)
+      VALUES ($1, $2, $3, $4, $5, $6, NULL, '{}'::jsonb, $7::timestamptz, $8::timestamptz)
     `,
-    [username, displayName, email, rmUserId, isActive, nowIso, nowIso]
+    [username, displayName, email, role, rmUserId, isActive, nowIso, nowIso]
   );
   return { data: await listLocalUsers() };
 };
@@ -677,16 +708,32 @@ const loadPersistedRuntimeConfig = async () => {
     const content = await readFile(BACKEND_CONFIG_FILE, 'utf8');
     const parsed = JSON.parse(content);
     if (!parsed || typeof parsed !== 'object') return;
-    Object.assign(runtimeConfig, parsed);
+    assignRuntimeConfig(runtimeConfig, parsed);
   } catch (_error) {
     // Primeiro boot ou arquivo ausente/corrompido: mantém config padrão.
   }
 };
 
+const loadRuntimeSecrets = async () => {
+  try {
+    const content = await readFile(BACKEND_SECRETS_FILE, 'utf8');
+    const parsed = JSON.parse(content);
+    if (!parsed || typeof parsed !== 'object') return;
+    assignRuntimeConfig(runtimeConfig, parsed);
+  } catch (_error) {
+    // Arquivo de segredos é opcional.
+  }
+};
+
 const persistRuntimeConfig = async () => {
   const dir = path.dirname(BACKEND_CONFIG_FILE);
+  const payload = {
+    rmApiBaseUrl: runtimeConfig.rmApiBaseUrl,
+    rmAuthUsersPath: runtimeConfig.rmAuthUsersPath,
+    rmConsultaBasePath: runtimeConfig.rmConsultaBasePath,
+  };
   await mkdir(dir, { recursive: true });
-  await writeFile(BACKEND_CONFIG_FILE, JSON.stringify(runtimeConfig, null, 2), 'utf8');
+  await writeFile(BACKEND_CONFIG_FILE, JSON.stringify(payload, null, 2), 'utf8');
 };
 
 const sessions = new Map();
@@ -1375,22 +1422,23 @@ app.get('/api/admin/runtime-config', requireAuth, (_req, res) => {
     rmApiBaseUrl: runtimeConfig.rmApiBaseUrl,
     rmAuthUsersPath: runtimeConfig.rmAuthUsersPath,
     rmConsultaBasePath: runtimeConfig.rmConsultaBasePath,
-    googleMapsApiKey: runtimeConfig.googleMapsApiKey,
+    hasGoogleMapsApiKey: Boolean(runtimeConfig.googleMapsApiKey),
+    googleMapsApiKeyPreview: maskApiKeyPreview(runtimeConfig.googleMapsApiKey),
   });
 });
 
 app.post('/api/admin/runtime-config', requireAuth, (req, res) => {
-  const {
-    rmApiBaseUrl,
-    rmAuthUsersPath,
-    rmConsultaBasePath,
-    googleMapsApiKey,
-  } = req.body || {};
+  const { rmApiBaseUrl, rmAuthUsersPath, rmConsultaBasePath, googleMapsApiKey } = req.body || {};
 
   if (rmApiBaseUrl) runtimeConfig.rmApiBaseUrl = String(rmApiBaseUrl).trim();
   if (rmAuthUsersPath) runtimeConfig.rmAuthUsersPath = String(rmAuthUsersPath).trim();
   if (rmConsultaBasePath) runtimeConfig.rmConsultaBasePath = String(rmConsultaBasePath).trim();
-  if (googleMapsApiKey !== undefined) runtimeConfig.googleMapsApiKey = String(googleMapsApiKey).trim();
+  if (googleMapsApiKey !== undefined) {
+    return res.status(400).json({
+      message:
+        'googleMapsApiKey não pode ser alterada por esta rota. Use GOOGLE_MAPS_API_KEY no ambiente ou BACKEND_SECRETS_FILE no backend.',
+    });
+  }
 
   persistRuntimeConfig()
     .then(() => {
@@ -1400,7 +1448,8 @@ app.post('/api/admin/runtime-config', requireAuth, (req, res) => {
           rmApiBaseUrl: runtimeConfig.rmApiBaseUrl,
           rmAuthUsersPath: runtimeConfig.rmAuthUsersPath,
           rmConsultaBasePath: runtimeConfig.rmConsultaBasePath,
-          googleMapsApiKey: runtimeConfig.googleMapsApiKey,
+          hasGoogleMapsApiKey: Boolean(runtimeConfig.googleMapsApiKey),
+          googleMapsApiKeyPreview: maskApiKeyPreview(runtimeConfig.googleMapsApiKey),
         },
       });
     })
@@ -1414,7 +1463,7 @@ app.post('/api/admin/runtime-config', requireAuth, (req, res) => {
 
 Promise.resolve()
   .then(() => initDatabase())
-  .then(() => Promise.all([loadPersistedRuntimeConfig(), loadPersistedTravelRequests()]))
+  .then(() => Promise.all([loadPersistedRuntimeConfig(), loadRuntimeSecrets(), loadPersistedTravelRequests()]))
   .then(() => Promise.all([persistRuntimeConfig(), persistTravelRequests()]))
   .catch((error) => {
     console.error('Erro ao inicializar backend:', error?.message || String(error));

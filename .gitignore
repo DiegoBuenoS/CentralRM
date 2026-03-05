@@ -30,6 +30,7 @@ dist-ssr
 
 # Runtime config local (não versionar segredo)
 apps/api/runtime-config.json
+apps/api/runtime-secrets.json
 
 # Expo / React Native
 .expo

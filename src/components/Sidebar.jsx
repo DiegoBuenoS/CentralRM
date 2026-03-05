@@ -6,6 +6,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   Cog6ToothIcon,
+  ClockIcon,
   KeyIcon,
   MoonIcon,
   ReceiptPercentIcon,
@@ -34,18 +35,18 @@ const navigationSections = [
         icon: ReceiptPercentIcon,
         path: '/despesas-viagens',
       },
+      {
+        id: 'timesheet',
+        label: 'TimeSheet',
+        icon: ClockIcon,
+        path: '/timesheet',
+      },
     ],
   },
   {
     id: 'configuracoes',
     label: 'Configurações',
     items: [
-      {
-        id: 'configuracoes-usuarios',
-        label: 'Gestão de Usuários',
-        icon: UsersIcon,
-        path: '/configuracoes/usuarios',
-      },
       {
         id: 'configuracoes-chaves-api',
         label: 'Gestão de Chaves API',
@@ -151,6 +152,26 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
       </SidebarContent>
 
       <SidebarFooter className="space-y-2 p-3">
+        <button
+          type="button"
+          onClick={() =>
+            onNavigate({
+              id: 'configuracoes-usuarios',
+              path: '/configuracoes/usuarios',
+            })
+          }
+          className={`w-full rounded-xl py-2.5 transition-colors ${
+            collapsed ? 'px-0' : 'px-3'
+          } inline-flex items-center ${
+            collapsed ? 'justify-center' : 'gap-2.5'
+          } text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900 dark:text-graphite-300 dark:hover:bg-graphite-800 dark:hover:text-graphite-50`}
+          title={collapsed ? 'Gestão de Usuários' : ''}
+          aria-current={currentPage === 'configuracoes-usuarios' ? 'page' : undefined}
+        >
+          <UsersIcon className="h-5 w-5" />
+          {!collapsed && <span className="text-sm font-medium">Gestão de Usuários</span>}
+        </button>
+
         <button
           type="button"
           onClick={toggleTheme}

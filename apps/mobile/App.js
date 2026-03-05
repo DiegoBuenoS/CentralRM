@@ -141,13 +141,13 @@ export default function App() {
 
   const [token, setToken] = React.useState('');
   const [user, setUser] = React.useState(null);
-  const [_travelRequests, setTravelRequests] = React.useState([]);
+  const [travelRequests, setTravelRequests] = React.useState([]);
   const [showCreateForm, setShowCreateForm] = React.useState(false);
   const [travelForm, setTravelForm] = React.useState(createEmptyTravelForm());
   const [attachments, setAttachments] = React.useState([]);
   const [activeTab, setActiveTab] = React.useState('home');
 
-  const displayedRequests = DEMO_TRAVEL_REQUESTS;
+  const displayedRequests = travelRequests;
 
   const totalAmount = React.useMemo(
     () => displayedRequests.reduce((sum, item) => sum + parseMoney(item.totalValue), 0),

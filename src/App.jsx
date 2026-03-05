@@ -13,6 +13,8 @@ const SETTINGS_USERS_PATH = '/configuracoes/usuarios';
 const SETTINGS_USERS_PAGE = 'configuracoes-usuarios';
 const SETTINGS_API_KEYS_PATH = '/configuracoes/chaves-api';
 const SETTINGS_API_KEYS_PAGE = 'configuracoes-chaves-api';
+const TIMESHEET_PATH = '/timesheet';
+const TIMESHEET_PAGE = 'timesheet';
 const TEMP_DISABLED_MODULE_PATHS = [
   '/dashboard',
   '/tarefas',
@@ -58,6 +60,12 @@ const SettingsApiKeysRoute = () => (
   </ProtectedRoute>
 );
 
+const TimeSheetRoute = () => (
+  <ProtectedRoute>
+    <DashboardPage initialPage={TIMESHEET_PAGE} />
+  </ProtectedRoute>
+);
+
 const TravelFocusRedirectRoute = () => (
   <ProtectedRoute>
     <Navigate to={TRAVEL_FOCUS_PATH} replace />
@@ -94,6 +102,10 @@ function App() {
         <Route
           path={SETTINGS_API_KEYS_PATH}
           element={<SettingsApiKeysRoute />}
+        />
+        <Route
+          path={TIMESHEET_PATH}
+          element={<TimeSheetRoute />}
         />
         <Route
           path="/configuracoes"

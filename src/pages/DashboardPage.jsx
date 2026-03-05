@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
+import TimeSheetModule from './TimeSheetModule';
 import { SidebarProvider, useSidebar } from '../components/ui/sidebar';
 import {
   logoutUser,
@@ -134,10 +135,13 @@ const SETTINGS_USERS_PAGE = 'configuracoes-usuarios';
 const SETTINGS_USERS_PATH = '/configuracoes/usuarios';
 const SETTINGS_API_KEYS_PAGE = 'configuracoes-chaves-api';
 const SETTINGS_API_KEYS_PATH = '/configuracoes/chaves-api';
+const TIMESHEET_PAGE = 'timesheet';
+const TIMESHEET_PATH = '/timesheet';
 const ENABLED_PAGES = new Set([
   TRAVEL_FOCUS_PAGE,
   SETTINGS_USERS_PAGE,
   SETTINGS_API_KEYS_PAGE,
+  TIMESHEET_PAGE,
 ]);
 
 const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
@@ -214,6 +218,10 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
     }
     if (pageId === SETTINGS_API_KEYS_PAGE) {
       navigate(SETTINGS_API_KEYS_PATH);
+      return;
+    }
+    if (pageId === TIMESHEET_PAGE) {
+      navigate(TIMESHEET_PATH);
       return;
     }
     navigate(TRAVEL_FOCUS_PATH);
@@ -2042,6 +2050,12 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
       description: 'Gestão de credenciais técnicas e integrações.',
       status: 'Ativo',
       owner: 'Administrador',
+    },
+    [TIMESHEET_PAGE]: {
+      title: 'TimeSheet',
+      description: 'Apontamento de horas por projeto e tarefa.',
+      status: 'Ativo',
+      owner: 'Operação',
     },
   };
   const activeCover = pageCoverMap[normalizedPage] || pageCoverMap[TRAVEL_FOCUS_PAGE];
@@ -4533,6 +4547,10 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
             </Dialog>
           </div>
         );
+      }
+
+      case 'timesheet': {
+        return <TimeSheetModule />;
       }
 
       case 'configuracoes-usuarios': {

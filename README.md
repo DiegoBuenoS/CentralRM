@@ -152,6 +152,17 @@ DATABASE_URL=postgres://central_rm_user:central_rm_pass@localhost:5432/central_r
 DATABASE_SSL=false
 ```
 
+### Chaves de API sem expor no cliente
+
+Para manter segredos fora da interface (web/mobile), salve a chave apenas no backend:
+
+1. Crie `apps/api/runtime-secrets.json` a partir de `apps/api/runtime-secrets.example.json`
+2. Preencha `googleMapsApiKey`
+3. Reinicie a API
+
+O arquivo `apps/api/runtime-secrets.json` está no `.gitignore` e não deve ser versionado.
+Se quiser rodar sem banco por enquanto, deixe `DATABASE_URL` vazio e a API usa fallback em arquivo local.
+
 ### Base URL do backend no app mobile
 
 O app mobile usa `EXPO_PUBLIC_API_BASE_URL` quando definida.
