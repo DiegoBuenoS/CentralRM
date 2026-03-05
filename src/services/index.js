@@ -4,3 +4,16 @@ export { getConsultaSql, buildConsultaSqlPath, buildConsultaSqlUrl } from './con
 export { getEstimatedDistanceKm, getTravelRouteEstimate } from './googleRoutes.service';
 export { uploadFiles } from './upload.service';
 export { getPlaceSuggestions } from './places.service';
+export {
+  createTravelRequest,
+  listTravelRequests,
+  updateTravelRequestIntegration,
+} from './travelRequests.service';
+export {
+  listLocalUsers,
+  createLocalUser,
+  updateLocalUserStatus,
+  listGoogleApiKeys,
+  createGoogleApiKey,
+  updateGoogleApiKeyStatus,
+} from './admin.service';

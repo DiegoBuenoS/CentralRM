@@ -23,48 +23,59 @@ export default {
       '8xl': ['6rem', { lineHeight: '1' }],
       '9xl': ['8rem', { lineHeight: '1' }],
     },
-  		extend: {
+		extend: {
   		fontFamily: {
   			sans: [
-  				'SF Pro Text',
-  				'SF Pro Display',
+ 				'Segoe UI',
+  				'Roboto',
   				'Helvetica Neue',
-  				'Helvetica',
+  				'Arial',
   				'-apple-system',
   				'BlinkMacSystemFont',
-  				'Segoe UI',
   				'sans-serif'
   			]
   		},
   		colors: {
   			graphite: {
-  				'50': '#f7f8fa',
-  				'100': '#eef0f4',
-  				'200': '#e1e4ea',
-  				'300': '#c7ccd6',
-  				'400': '#9aa3b2',
-  				'500': '#6b7483',
-  				'600': '#4b5563',
-  				'700': '#374151',
-  				'800': '#1f2937',
-  				'900': '#0b0d0f'
+  				'50': '#f8fafc',
+  				'100': '#f1f5f9',
+  				'200': '#e2e8f0',
+  				'300': '#cbd5e1',
+  				'400': '#94a3b8',
+  				'500': '#64748b',
+  				'600': '#475569',
+  				'700': '#334155',
+  				'800': '#1e293b',
+  				'900': '#0f172a'
   			},
+			blue: {
+				'50': '#f6f8fb',
+				'100': '#edf2f7',
+				'200': '#dbe5f0',
+				'300': '#c4d4e5',
+				'400': '#98b2cc',
+				'500': '#6f90b0',
+				'600': '#4f7294',
+				'700': '#385a79',
+				'800': '#27455f',
+				'900': '#173042'
+			},
 			accent: {
-				'50': '#f7f7f7',
-				'100': '#eeeeee',
-				'200': '#e2e2e2',
-				'300': '#cfcfcf',
-				'400': '#a3a3a3',
-				'500': '#7a7a7a',
-				'600': '#1f1f1f',
-				'700': '#1a1a1a',
-				'800': '#111111',
-				'900': '#0b0b0b',
+				'50': '#f7f9fc',
+				'100': '#eef3f8',
+				'200': '#dee8f2',
+				'300': '#c8d8e8',
+				'400': '#a7bfd6',
+				'500': '#7f9fbe',
+				'600': '#5f84a6',
+				'700': '#496a8d',
+				'800': '#38536f',
+				'900': '#2a3d53',
 				DEFAULT: 'hsl(var(--accent))',
 				foreground: 'hsl(var(--accent-foreground))'
 			},
   			surface: '#ffffff',
-			mist: '#ffffff',
+			mist: '#f4f6f8',
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			card: {
@@ -103,8 +114,8 @@ export default {
   			}
   		},
   		boxShadow: {
-  			'card-soft': '0 8px 24px -18px rgba(15, 23, 42, 0.25)',
-  			'card-hover': '0 12px 28px -18px rgba(15, 23, 42, 0.3)'
+  			'card-soft': '0 10px 24px -18px rgba(15, 23, 42, 0.22)',
+  			'card-hover': '0 14px 28px -18px rgba(15, 23, 42, 0.28)'
   		},
   		borderRadius: {
   			lg: 'var(--radius)',

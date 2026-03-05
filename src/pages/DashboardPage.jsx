@@ -12,6 +12,13 @@ import {
   getTravelRouteEstimate,
   uploadFiles,
   getPlaceSuggestions,
+  createTravelRequest,
+  listLocalUsers as listLocalUsersFromApi,
+  createLocalUser as createLocalUserFromApi,
+  updateLocalUserStatus as updateLocalUserStatusFromApi,
+  listGoogleApiKeys as listGoogleApiKeysFromApi,
+  createGoogleApiKey as createGoogleApiKeyFromApi,
+  updateGoogleApiKeyStatus as updateGoogleApiKeyStatusFromApi,
 } from '../services';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -47,8 +54,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '../components/ui/tabs'
 import { DataTable } from '../components/ui/data-table';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../components/ui/chart';
 import API_CONFIG from '../config/api.config';
-import { getRuntimeConfig, saveRuntimeConfig } from '../config/runtime.config';
 import { ComposedChart, Line, Area, CartesianGrid, XAxis, YAxis, Legend } from 'recharts';
+import { ptBR } from 'date-fns/locale';
 import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
@@ -70,12 +77,11 @@ import {
   DocumentTextIcon,
   UsersIcon,
   ChevronDownIcon,
-  EyeIcon,
-  EyeSlashIcon,
   MapPinIcon,
   ArrowRightIcon,
   BriefcaseIcon,
   FlagIcon,
+  KeyIcon,
   PrinterIcon,
   EnvelopeIcon,
   ChatBubbleLeftRightIcon,
@@ -122,7 +128,19 @@ const DashboardLayout = ({
   );
 };
 
-const DashboardPage = ({ initialPage = 'dashboard' }) => {
+const TRAVEL_FOCUS_PAGE = 'despesas-viagens';
+const TRAVEL_FOCUS_PATH = '/despesas-viagens';
+const SETTINGS_USERS_PAGE = 'configuracoes-usuarios';
+const SETTINGS_USERS_PATH = '/configuracoes/usuarios';
+const SETTINGS_API_KEYS_PAGE = 'configuracoes-chaves-api';
+const SETTINGS_API_KEYS_PATH = '/configuracoes/chaves-api';
+const ENABLED_PAGES = new Set([
+  TRAVEL_FOCUS_PAGE,
+  SETTINGS_USERS_PAGE,
+  SETTINGS_API_KEYS_PAGE,
+]);
+
+const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [user, setUser] = useState(null);
@@ -156,6 +174,16 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     setCurrentPage(initialPage);
   }, [initialPage]);
 
+  useEffect(() => {
+    if (currentPage === SETTINGS_USERS_PAGE) {
+      loadLocalUsersData();
+    }
+    if (currentPage === SETTINGS_API_KEYS_PAGE) {
+      loadGoogleApiKeysData();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage]);
+
   // Logout
   const handleLogout = async () => {
     try {
@@ -170,11 +198,25 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   // Navegação
   const handleNavigate = (item) => {
     const pageId = item?.id || item;
+    if (!ENABLED_PAGES.has(pageId)) {
+      setCurrentPage(TRAVEL_FOCUS_PAGE);
+      navigate(TRAVEL_FOCUS_PATH);
+      return;
+    }
     setCurrentPage(pageId);
     if (item?.path) {
       navigate(item.path);
+      return;
     }
-    console.log('Navegando para:', pageId);
+    if (pageId === SETTINGS_USERS_PAGE) {
+      navigate(SETTINGS_USERS_PATH);
+      return;
+    }
+    if (pageId === SETTINGS_API_KEYS_PAGE) {
+      navigate(SETTINGS_API_KEYS_PATH);
+      return;
+    }
+    navigate(TRAVEL_FOCUS_PATH);
   };
 
 
@@ -798,6 +840,25 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const [approvalProgress, setApprovalProgress] = useState(0);
   const [approvalResult, setApprovalResult] = useState('');
   const [approvalSearch, setApprovalSearch] = useState('');
+  const [localUsers, setLocalUsers] = useState([]);
+  const [localUsersLoading, setLocalUsersLoading] = useState(false);
+  const [localUsersError, setLocalUsersError] = useState('');
+  const [userForm, setUserForm] = useState({
+    username: '',
+    displayName: '',
+    email: '',
+    role: 'Financeiro',
+  });
+  const [userFormError, setUserFormError] = useState('');
+  const [googleApiKeys, setGoogleApiKeys] = useState([]);
+  const [googleApiKeysLoading, setGoogleApiKeysLoading] = useState(false);
+  const [googleApiKeysError, setGoogleApiKeysError] = useState('');
+  const [apiKeyForm, setApiKeyForm] = useState({
+    keyName: '',
+    projectId: '',
+    apiKey: '',
+  });
+  const [apiKeyFormError, setApiKeyFormError] = useState('');
   const [travelExpenses, setTravelExpenses] = useState(initialTravelExpenses);
   const [selectedTravelExpenseId, setSelectedTravelExpenseId] = useState(initialTravelExpenses[0]?.id || null);
   const [travelReportDialogOpen, setTravelReportDialogOpen] = useState(false);
@@ -836,11 +897,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   const travelKmAutoTimer = React.useRef(null);
   const lastTravelKmQuery = React.useRef('');
   const travelItemFileInputRef = React.useRef(null);
-  const [integrationConfig, setIntegrationConfig] = useState(() => getRuntimeConfig());
-  const [integrationConfigSaving, setIntegrationConfigSaving] = useState(false);
-  const [integrationConfigStatus, setIntegrationConfigStatus] = useState('');
-  const [integrationConfigError, setIntegrationConfigError] = useState('');
-  const [showGoogleApiKey, setShowGoogleApiKey] = useState(false);
   const travelRouteMap = React.useMemo(() => {
     const origin = travelDraft.origem?.trim();
     const destination = travelDraft.destino?.trim();
@@ -905,13 +961,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     Boolean(travelDraft.periodoFim) &&
     travelDraft.periodoFim < travelDraft.periodoInicio;
 
-  const normalizePage = (page) => {
-    if (!page) return 'dashboard';
-    if (page.startsWith('dashboard-')) return page;
-    if (page.startsWith('pedidos-')) return 'pedidos';
-    return page;
-  };
-  const normalizedPage = normalizePage(currentPage);
+  const normalizedPage = currentPage || TRAVEL_FOCUS_PAGE;
   const requestItemCatalog = [
     { codigo: '02.01.0001', descricao: 'Servico Fornecimento de Agua/Esgoto', tipo: 'Servico', unidade: 'SV' },
     { codigo: '02.01.0002', descricao: 'Servico de Fornecimento de Telecomunicacao', tipo: 'Servico', unidade: 'SV' },
@@ -930,56 +980,18 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
   ];
 
   useEffect(() => {
-    if (normalizedPage !== 'configuracoes') return;
-
-    const sessionToken = localStorage.getItem('session_token');
-    if (!sessionToken) return;
-
-    const localConfig = getRuntimeConfig();
-    fetch(`${localConfig.backendBaseUrl}/api/admin/runtime-config`, {
-      headers: {
-        Authorization: `Bearer ${sessionToken}`,
-      },
-    })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.message || 'Não foi possível carregar configurações do backend.');
-        }
-        return payload;
-      })
-      .then((payload) => {
-        setIntegrationConfig((prev) => ({
-          ...prev,
-          ...payload,
-          backendBaseUrl: localConfig.backendBaseUrl,
-        }));
-      })
-      .catch(() => {
-        // Mantém configuração local se backend não responder.
-      });
-  }, [normalizedPage]);
-
-  useEffect(() => {
     if (pedidoSelecionado?.itens?.length) {
       setItemSelecionado(pedidoSelecionado.itens[0].sku);
     }
   }, [pedidoSelecionado]);
 
   useEffect(() => {
-    if (normalizedPage === 'tarefas' && !approvalSelected) {
-      setApprovalSelected(approvalPedidos[0]);
-    }
-  }, [normalizedPage, approvalSelected, approvalPedidos]);
-
-  useEffect(() => {
-    if (normalizedPage !== 'despesas-viagens') return;
     if (!travelExpenses.length) return;
     const stillExists = travelExpenses.some((row) => row.id === selectedTravelExpenseId);
     if (!stillExists) {
       setSelectedTravelExpenseId(travelExpenses[0].id);
     }
-  }, [normalizedPage, travelExpenses, selectedTravelExpenseId]);
+  }, [travelExpenses, selectedTravelExpenseId]);
 
   const pedidosFiltrados = pedidosData
     .filter((pedido) => {
@@ -1215,6 +1227,138 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     }, 300);
   };
 
+  const toPtBrDateTime = (value) => {
+    if (!value) return 'Nunca';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return 'Nunca';
+    return parsed.toLocaleString('pt-BR');
+  };
+
+  const normalizeUsersFromApi = (items = []) =>
+    items.map((entry) => ({
+      username: entry.username,
+      displayName: entry.displayName || entry.username,
+      email: entry.email || '-',
+      role: entry.role || 'Financeiro',
+      status: entry.isActive ? 'Ativo' : 'Inativo',
+      lastLogin: toPtBrDateTime(entry.lastLoginAt),
+    }));
+
+  const normalizeApiKeysFromApi = (items = []) =>
+    items.map((entry) => ({
+      keyName: entry.keyName,
+      projectId: entry.projectId || '-',
+      keyPreview: entry.keyPreview || '••••••••',
+      status: entry.isActive ? 'Ativa' : 'Inativa',
+      updatedAt: toPtBrDateTime(entry.updatedAt),
+    }));
+
+  const loadLocalUsersData = async () => {
+    setLocalUsersLoading(true);
+    setLocalUsersError('');
+    try {
+      const items = await listLocalUsersFromApi();
+      setLocalUsers(normalizeUsersFromApi(items));
+    } catch (error) {
+      setLocalUsersError(error?.message || 'Falha ao carregar usuários.');
+    } finally {
+      setLocalUsersLoading(false);
+    }
+  };
+
+  const loadGoogleApiKeysData = async () => {
+    setGoogleApiKeysLoading(true);
+    setGoogleApiKeysError('');
+    try {
+      const items = await listGoogleApiKeysFromApi();
+      setGoogleApiKeys(normalizeApiKeysFromApi(items));
+    } catch (error) {
+      setGoogleApiKeysError(error?.message || 'Falha ao carregar chaves API.');
+    } finally {
+      setGoogleApiKeysLoading(false);
+    }
+  };
+
+  const handleCreateLocalUser = async () => {
+    const username = userForm.username.trim().toLowerCase();
+    const displayName = userForm.displayName.trim();
+    const email = userForm.email.trim().toLowerCase();
+    if (!username || !displayName || !email) {
+      setUserFormError('Preencha usuário, nome e e-mail.');
+      return;
+    }
+    if (localUsers.some((entry) => entry.username === username)) {
+      setUserFormError('Já existe um usuário com esse login.');
+      return;
+    }
+    try {
+      const items = await createLocalUserFromApi({
+        username,
+        displayName,
+        email,
+        role: userForm.role,
+      });
+      setLocalUsers(normalizeUsersFromApi(items));
+      setUserForm({ username: '', displayName: '', email: '', role: 'Financeiro' });
+      setUserFormError('');
+    } catch (error) {
+      setUserFormError(error?.message || 'Não foi possível criar usuário.');
+    }
+  };
+
+  const handleToggleLocalUserStatus = async (username) => {
+    const current = localUsers.find((entry) => entry.username === username);
+    if (!current) return;
+    try {
+      const items = await updateLocalUserStatusFromApi({
+        username,
+        isActive: current.status !== 'Ativo',
+      });
+      setLocalUsers(normalizeUsersFromApi(items));
+    } catch (error) {
+      setUserFormError(error?.message || 'Não foi possível atualizar status do usuário.');
+    }
+  };
+
+  const handleCreateApiKey = async () => {
+    const keyName = apiKeyForm.keyName.trim().toLowerCase();
+    const apiKey = apiKeyForm.apiKey.trim();
+    if (!keyName || !apiKey) {
+      setApiKeyFormError('Preencha nome da chave e valor da API key.');
+      return;
+    }
+    if (googleApiKeys.some((entry) => entry.keyName === keyName)) {
+      setApiKeyFormError('Já existe uma chave com esse nome.');
+      return;
+    }
+    try {
+      const items = await createGoogleApiKeyFromApi({
+        keyName,
+        apiKey,
+        projectId: apiKeyForm.projectId.trim() || null,
+      });
+      setGoogleApiKeys(normalizeApiKeysFromApi(items));
+      setApiKeyForm({ keyName: '', projectId: '', apiKey: '' });
+      setApiKeyFormError('');
+    } catch (error) {
+      setApiKeyFormError(error?.message || 'Não foi possível salvar chave API.');
+    }
+  };
+
+  const handleToggleApiKeyStatus = async (keyName) => {
+    const current = googleApiKeys.find((entry) => entry.keyName === keyName);
+    if (!current) return;
+    try {
+      const items = await updateGoogleApiKeyStatusFromApi({
+        keyName,
+        isActive: current.status !== 'Ativa',
+      });
+      setGoogleApiKeys(normalizeApiKeysFromApi(items));
+    } catch (error) {
+      setApiKeyFormError(error?.message || 'Não foi possível atualizar status da chave.');
+    }
+  };
+
   const resetTravelDraft = () => {
     Object.values(travelAutocompleteTimers.current).forEach((timerId) => {
       if (timerId) clearTimeout(timerId);
@@ -1254,10 +1398,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     resetTravelDraft();
     loadRequestLookups();
     setTravelDialogOpen(true);
-  };
-
-  const handleSelectTravelType = (type) => {
-    setTravelDraft((prev) => ({ ...prev, tipoSolicitacao: type }));
   };
 
   const handleAddTravelItem = () => {
@@ -1663,7 +1803,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     const paymentDate = new Date(endDate);
     paymentDate.setDate(paymentDate.getDate() + 7);
     const dataPrevistaPgto = travelDraft.numeroRm ? paymentDate.toLocaleDateString('pt-BR') : '--';
-    const newExpense = {
+    let newExpense = {
       id: `DV-${String(nextIdNumber).padStart(4, '0')}`,
       tipoSolicitacao: travelDraft.tipoSolicitacao,
       origem: travelDraft.origem,
@@ -1693,6 +1833,48 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
       rateio,
       anexos: uploadedFiles.length,
     };
+
+    try {
+      const createdBy =
+        user?.username || user?.id || localStorage.getItem('username') || 'usuario-desconhecido';
+      const persistencePayload = {
+        requestId: newExpense.id,
+        idempotencyKey: newExpense.id,
+        requester: createdBy,
+        tipoSolicitacao: travelDraft.tipoSolicitacao,
+        origem: travelDraft.origem,
+        destino: travelDraft.destino,
+        periodoInicio: travelDraft.periodoInicio,
+        periodoFim: travelDraft.periodoFim,
+        kmEstimado: toNumber(travelDraft.kmEstimado),
+        centroCusto: newExpense.centroCusto,
+        totalValue,
+        numeroRm: travelDraft.numeroRm || null,
+        integrationStatus: travelDraft.numeroRm ? 'ENVIADO' : 'PENDENTE',
+        retryCount: 0,
+        lastError: null,
+        itens: newExpense.itensDetalhes,
+        rateio,
+        anexos: uploadedFiles,
+        observacao: travelDraft.observacao || '',
+        payload: {
+          ...newExpense,
+          totalValue,
+        },
+      };
+
+      const persisted = await createTravelRequest(persistencePayload);
+      const persistedRequestId = persisted?.request?.requestId;
+      if (persistedRequestId) {
+        newExpense = { ...newExpense, id: persistedRequestId };
+      }
+    } catch (error) {
+      setTravelUploadError(
+        error?.message || 'Falha ao registrar solicitação no backend. Tente novamente.'
+      );
+      setTravelSaving(false);
+      return;
+    }
 
     setTravelExpenses((prev) => [newExpense, ...prev]);
     setTravelDialogOpen(false);
@@ -1817,183 +1999,52 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
     await saveTravelExpense({ ...travelPendingSubmission, rateio });
   };
 
-  const handleIntegrationConfigChange = (field, value) => {
-    setIntegrationConfig((prev) => ({ ...prev, [field]: value }));
-    setIntegrationConfigStatus('');
-    setIntegrationConfigError('');
-  };
-
-  const handleSaveIntegrationConfig = async () => {
-    setIntegrationConfigSaving(true);
-    setIntegrationConfigStatus('');
-    setIntegrationConfigError('');
-
-    const storedConfig = saveRuntimeConfig(integrationConfig);
-    setIntegrationConfig(storedConfig);
-
-    const sessionToken = localStorage.getItem('session_token');
-    if (!sessionToken) {
-      setIntegrationConfigSaving(false);
-      setIntegrationConfigStatus('Configuração local salva. Faça login novamente para sincronizar no backend.');
-      return;
-    }
-
-    try {
-      const response = await fetch(`${storedConfig.backendBaseUrl}/api/admin/runtime-config`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({
-          rmApiBaseUrl: storedConfig.rmApiBaseUrl,
-          rmAuthUsersPath: storedConfig.rmAuthUsersPath,
-          rmConsultaBasePath: storedConfig.rmConsultaBasePath,
-          googleMapsApiKey: storedConfig.googleMapsApiKey,
-        }),
-      });
-
-      const payload = await response.json().catch(() => null);
-      if (!response.ok) {
-        throw new Error(payload?.message || 'Falha ao sincronizar configurações no backend.');
-      }
-
-      setIntegrationConfigStatus('Configurações salvas e sincronizadas com o backend.');
-    } catch (error) {
-      setIntegrationConfigError(
-        error?.message || 'Configuração local salva, mas não foi possível sincronizar no backend.'
-      );
-    } finally {
-      setIntegrationConfigSaving(false);
-    }
-  };
-
   const formatDate = (date) => (date ? date.toLocaleDateString('pt-BR') : 'Selecione...');
+  const parseLocalDateFromInput = (value) => {
+    if (!value) return undefined;
+    const [year, month, day] = value.split('-').map(Number);
+    if (!year || !month || !day) return undefined;
+    return new Date(year, month - 1, day);
+  };
+  const toInputDateValue = (date) => {
+    if (!(date instanceof Date)) return '';
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+  const travelDateRange = {
+    from: parseLocalDateFromInput(travelDraft.periodoInicio),
+    to: parseLocalDateFromInput(travelDraft.periodoFim),
+  };
+  const travelDateRangeLabel =
+    travelDateRange.from && travelDateRange.to
+      ? `${formatDate(travelDateRange.from)} - ${formatDate(travelDateRange.to)}`
+      : travelDateRange.from
+      ? `${formatDate(travelDateRange.from)} - Selecione o fim`
+      : 'Selecione o período da viagem';
 
-  const coverByPage = {
-    dashboard: {
-      title: 'Painel Geral',
-      description: 'Resumo Operacional',
-      status: 'Ativo',
-      owner: 'Controladoria',
-    },
-    'dashboard-compras': {
-      title: 'Dashboard - Compras',
-      description: 'Indicadores de pedidos, aprovações e gastos.',
-      status: 'Ativo',
-      owner: 'Compras',
-    },
-    'dashboard-estoque': {
-      title: 'Dashboard - Estoque',
-      description: 'Níveis de saldo, rupturas e giro por categoria.',
-      status: 'Ativo',
-      owner: 'Supply',
-    },
-    'dashboard-faturamento': {
-      title: 'Dashboard - Faturamento',
-      description: 'Evolução de receita, devoluções e títulos.',
-      status: 'Ativo',
-      owner: 'Financeiro',
-    },
-    'dashboard-orcamento': {
-      title: 'Dashboard - Orçamento',
-      description: 'Visão comparativa entre orçado e realizado.',
-      status: 'Ativo',
-      owner: 'Controladoria',
-    },
-    tarefas: {
-      title: 'Tarefas e Aprovações',
-      description: 'Acompanhamento de aprovações e pendências.',
-      status: 'Em análise',
-      owner: 'Financeiro',
-    },
-    pedidos: {
-      title: 'Pedidos',
-      description: 'Gestão de solicitações e aprovações.',
-      status: 'Em revisão',
-      owner: 'Compras',
-    },
-    'notas-fiscais': {
-      title: 'Notas Fiscais',
-      description: 'Controle fiscal e validações.',
-      status: 'Em dia',
-      owner: 'Fiscal',
-    },
-    'despesas-viagens': {
+  const pageCoverMap = {
+    [TRAVEL_FOCUS_PAGE]: {
       title: 'Despesas com Viagens',
       description: 'Controle de gastos de deslocamento e prestação de contas.',
       status: 'Em revisão',
       owner: 'Financeiro',
     },
-    relatorios: {
-      title: 'Relatórios',
-      description: 'Indicadores e consolidações.',
-      status: 'Atualizado',
-      owner: 'BI',
-    },
-    configuracoes: {
-      title: 'Configurações',
-      description: 'Parâmetros do sistema e perfis.',
-      status: 'Restrito',
-      owner: 'TI',
-    },
-    cadastros: {
-      title: 'Cadastros',
-      description: 'Base corporativa de dados.',
-      status: 'Em revisão',
-      owner: 'Controladoria',
-    },
-    'cadastros-estoque': {
-      title: 'Cadastros - Estoque',
-      description: 'Catálogo de produtos e locais.',
+    [SETTINGS_USERS_PAGE]: {
+      title: 'Configurações • Usuários',
+      description: 'Gestão de usuários locais da aplicação.',
       status: 'Ativo',
-      owner: 'Supply',
+      owner: 'Administrador',
     },
-    'cadastros-estoque-produtos': {
-      title: 'Produtos',
-      description: 'Cadastro e manutenção de itens.',
+    [SETTINGS_API_KEYS_PAGE]: {
+      title: 'Configurações • Chaves API',
+      description: 'Gestão de credenciais técnicas e integrações.',
       status: 'Ativo',
-      owner: 'Supply',
-    },
-    'cadastros-estoque-local': {
-      title: 'Local de estoque',
-      description: 'Endereços e depósitos.',
-      status: 'Ativo',
-      owner: 'Supply',
-    },
-    'cadastros-financeiro': {
-      title: 'Cadastros - Financeiro',
-      description: 'Clientes, fornecedores e contas.',
-      status: 'Ativo',
-      owner: 'Financeiro',
-    },
-    'cadastros-financeiro-clientes': {
-      title: 'Cliente e Fornecedor',
-      description: 'Cadastro financeiro consolidado.',
-      status: 'Ativo',
-      owner: 'Financeiro',
-    },
-    'cadastros-financeiro-contas': {
-      title: 'Contas Caixa',
-      description: 'Contas e centros financeiros.',
-      status: 'Ativo',
-      owner: 'Financeiro',
-    },
-    'cadastros-est-compras-fat': {
-      title: 'Est. Compras e Fat.',
-      description: 'Parâmetros de compras e faturamento.',
-      status: 'Em revisão',
-      owner: 'Compras',
-    },
-    'cadastros-globais': {
-      title: 'Globais',
-      description: 'Parâmetros globais do sistema.',
-      status: 'Restrito',
-      owner: 'TI',
+      owner: 'Administrador',
     },
   };
-
-  const activeCover = coverByPage[normalizedPage] || coverByPage.dashboard;
+  const activeCover = pageCoverMap[normalizedPage] || pageCoverMap[TRAVEL_FOCUS_PAGE];
 
   const cadastrosOverviewCards = [
     {
@@ -3378,11 +3429,11 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
 
       case 'despesas-viagens': {
         const travelStatusStyles = {
-          Aprovada: 'border-teal-200 bg-teal-50 text-teal-700',
-          Finalizada: 'border-violet-200 bg-violet-50 text-violet-700',
-          'Em fila de pagamento': 'border-emerald-200 bg-emerald-50 text-emerald-700',
+          Aprovada: 'border-sky-200 bg-sky-50 text-sky-700',
+          Finalizada: 'border-blue-200 bg-blue-50 text-blue-700',
+          'Em fila de pagamento': 'border-indigo-200 bg-indigo-50 text-indigo-700',
           'Aguardando integração': 'border-amber-200 bg-amber-50 text-amber-700',
-          'Viagem em andamento': 'border-sky-200 bg-sky-50 text-sky-700',
+          'Viagem em andamento': 'border-cyan-200 bg-cyan-50 text-cyan-700',
         };
 
         const selectedTravelExpense = travelExpenses.find((row) => row.id === selectedTravelExpenseId) || null;
@@ -3455,7 +3506,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             key: 'numeroRm',
             label: 'Número RM',
             cell: (row) => (
-              <span className={row.numeroRm ? 'font-mono font-medium text-graphite-800' : 'text-graphite-400'}>
+              <span className={row.numeroRm ? 'font-mono font-medium text-blue-900' : 'text-blue-400'}>
                 {row.numeroRm || 'Pendente'}
               </span>
             ),
@@ -3474,7 +3525,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             cell: (row) => (
               <Badge
                 variant="secondary"
-                className={travelStatusStyles[row.status] || 'border-graphite-200 bg-graphite-100 text-graphite-700'}
+                className={travelStatusStyles[row.status] || 'border-blue-200 bg-blue-50 text-blue-700'}
               >
                 {row.status}
               </Badge>
@@ -3489,24 +3540,71 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             enableFilter: false,
           },
         ];
+        const parseCurrencyValue = (currencyText) => {
+          if (!currencyText) return 0;
+          const normalized = String(currencyText)
+            .replace(/[^\d,.-]/g, '')
+            .replace(/\./g, '')
+            .replace(',', '.');
+          const parsed = Number(normalized);
+          return Number.isFinite(parsed) ? parsed : 0;
+        };
+        const totalTravelAmount = travelExpenses.reduce(
+          (sum, row) => sum + parseCurrencyValue(row.total),
+          0
+        );
+        const integratedCount = travelExpenses.filter((row) => row.numeroRm).length;
+        const pendingIntegrationCount = travelExpenses.filter(
+          (row) => row.status === 'Aguardando integração'
+        ).length;
+        const paymentFlowCount = travelExpenses.filter(
+          (row) => row.status === 'Em fila de pagamento' || row.status === 'Finalizada'
+        ).length;
 
         return (
           <div className="space-y-6">
-            <div className="rounded-lg border border-graphite-200 bg-white p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-end">
+            <div className="rounded-2xl border border-sky-200 bg-gradient-to-b from-white to-sky-50/60 p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Painel de Viagens</p>
+                  <h2 className="text-xl font-semibold text-blue-950">Despesas e prestação de contas</h2>
+                </div>
                 <Button variant="default" size="default" onClick={handleOpenTravelDialog}>
-                  Nova
+                  Nova solicitação
                 </Button>
+              </div>
+              <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-xl border border-blue-100 bg-white p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Solicitações</p>
+                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{travelExpenses.length}</p>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-white p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Valor total</p>
+                  <p className="mt-1 text-2xl font-semibold text-graphite-900">
+                    R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-white p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Integradas ao RM</p>
+                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{integratedCount}</p>
+                </div>
+                <div className="rounded-xl border border-blue-100 bg-white p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Fluxo de pagamento</p>
+                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{paymentFlowCount}</p>
+                  {pendingIntegrationCount > 0 && (
+                    <p className="mt-1 text-xs text-amber-700">{pendingIntegrationCount} aguardando integração</p>
+                  )}
+                </div>
               </div>
               <DataTable
                 columns={despesasViagensColumns}
                 data={travelExpenses}
-                filterTitle="Filtros de Despesas"
-                filterContainerClassName="border-sky-200 bg-gradient-to-r from-sky-50 to-indigo-50 p-4 shadow-sm dark:border-sky-800/60 dark:from-graphite-900 dark:to-graphite-800"
+                filterTitle="Filtros da Viagem"
+                filterContainerClassName="border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 p-4 shadow-sm dark:border-blue-800/60 dark:from-graphite-900 dark:to-graphite-800"
                 filterGridClassName="xl:grid-cols-5 gap-4"
-                filterLabelClassName="text-graphite-700 dark:text-graphite-200"
-                filterInputClassName="h-10 border-sky-200 bg-white shadow-sm focus:border-sky-400 focus:ring-sky-300 dark:border-sky-900/70 dark:bg-graphite-900"
-                filterSelectTriggerClassName="h-10 border-sky-200 bg-white shadow-sm focus:border-sky-400 focus:ring-sky-300 dark:border-sky-900/70 dark:bg-graphite-900"
+                filterLabelClassName="text-blue-800 dark:text-blue-100"
+                filterInputClassName="h-10 border-blue-200 bg-white shadow-sm focus:border-blue-400 focus:ring-blue-300 dark:border-blue-900/70 dark:bg-graphite-900"
+                filterSelectTriggerClassName="h-10 border-blue-200 bg-white shadow-sm focus:border-blue-400 focus:ring-blue-300 dark:border-blue-900/70 dark:bg-graphite-900"
                 onRowClick={(row) => {
                   setSelectedTravelExpenseId(row.id);
                   setTravelReportDialogOpen(true);
@@ -3514,8 +3612,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 getRowClassName={(row) =>
                   `cursor-pointer ${
                     selectedTravelExpenseId === row.id
-                      ? 'bg-graphite-100/80 ring-1 ring-inset ring-graphite-300'
-                      : 'hover:bg-graphite-50'
+                      ? 'bg-blue-50/80 ring-1 ring-inset ring-blue-300'
+                      : 'hover:bg-blue-50/50'
                   }`
                 }
                 emptyMessage="Nenhuma despesa de viagem para os filtros selecionados."
@@ -3523,7 +3621,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </div>
 
             <Dialog open={travelReportDialogOpen} onOpenChange={setTravelReportDialogOpen}>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className="max-w-2xl border-blue-200 bg-gradient-to-b from-white to-blue-50/50">
                 <DialogHeader>
                   <DialogTitle>Resumo da despesa</DialogTitle>
                   <DialogDescription>Formato de relatório para envio e impressão.</DialogDescription>
@@ -3552,20 +3650,20 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         })}`,
                       }));
                       return (
-                    <div className="rounded-xl border-2 border-dashed border-graphite-300 bg-white p-4 font-mono text-sm">
-                      <div className="border-b border-dashed border-graphite-300 pb-2 text-center">
-                        <p className="text-xs uppercase tracking-wide text-graphite-500">Resumo de Viagem</p>
-                        <p className="text-base font-semibold text-graphite-900">{travelReport.id}</p>
+                    <div className="rounded-xl border-2 border-dashed border-blue-200 bg-white p-4 font-mono text-sm shadow-sm">
+                      <div className="border-b border-dashed border-blue-200 pb-2 text-center">
+                        <p className="text-xs uppercase tracking-wide text-blue-600">Resumo de Viagem</p>
+                        <p className="text-base font-semibold text-blue-950">{travelReport.id}</p>
                         <div className="mt-2 flex justify-center">
                           <Badge
                             variant="secondary"
-                            className={travelStatusStyles[travelReport.status] || 'border-graphite-200 bg-graphite-100 text-graphite-700'}
+                            className={travelStatusStyles[travelReport.status] || 'border-blue-200 bg-blue-50 text-blue-700'}
                           >
                             {travelReport.status}
                           </Badge>
                         </div>
                       </div>
-                      <div className="mt-3 overflow-hidden rounded-md border border-graphite-200 text-xs text-graphite-700">
+                      <div className="mt-3 overflow-hidden rounded-md border border-blue-200 text-xs text-blue-900">
                         {[
                           ['Tipo', travelReport.tipoSolicitacao],
                           ['Solicitante', travelReport.solicitante],
@@ -3580,7 +3678,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                           <div
                             key={label}
                             className={`flex justify-between px-2 py-1.5 ${
-                              index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                              index % 2 === 0 ? 'bg-blue-50/60' : 'bg-white'
                             }`}
                           >
                             <span>{label}</span>
@@ -3588,18 +3686,18 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                           </div>
                         ))}
                       </div>
-                      <div className="mt-3 border-t border-dashed border-graphite-300 pt-2 text-xs text-graphite-700">
-                        <p className="font-semibold text-graphite-900">Motivo</p>
+                      <div className="mt-3 border-t border-dashed border-blue-200 pt-2 text-xs text-blue-900">
+                        <p className="font-semibold text-blue-950">Motivo</p>
                         <p>{travelReport.motivo}</p>
-                        <p className="mt-2 font-semibold text-graphite-900">Observação</p>
+                        <p className="mt-2 font-semibold text-blue-950">Observação</p>
                         <p>{travelReport.observacao}</p>
-                        <p className="mt-3 font-semibold text-graphite-900">Itens</p>
-                        <div className="mt-1 overflow-hidden rounded-md border border-graphite-200">
+                        <p className="mt-3 font-semibold text-blue-950">Itens</p>
+                        <div className="mt-1 overflow-hidden rounded-md border border-blue-200">
                           {resumoItens.map((item, index) => (
                             <div
                               key={item.nome}
                               className={`flex items-center justify-between px-2 py-1.5 ${
-                                index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                                index % 2 === 0 ? 'bg-blue-50/60' : 'bg-white'
                               }`}
                             >
                               <span>{item.nome}</span>
@@ -3608,8 +3706,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                           ))}
                         </div>
                       </div>
-                      <div className="mt-3 border-t border-dashed border-graphite-300 pt-2 text-xs text-graphite-700">
-                        <div className="overflow-hidden rounded-md border border-graphite-200">
+                      <div className="mt-3 border-t border-dashed border-blue-200 pt-2 text-xs text-blue-900">
+                        <div className="overflow-hidden rounded-md border border-blue-200">
                           {[
                             ['Data prevista Pagamento', travelReport.dataPrevistaPgto || '--'],
                             ['Pagamento Realizado em', travelReport.pgtoRealizadoEm || '--'],
@@ -3617,7 +3715,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <div
                               key={label}
                               className={`flex justify-between px-2 py-1.5 ${
-                                index % 2 === 0 ? 'bg-graphite-50/80' : 'bg-white'
+                                index % 2 === 0 ? 'bg-blue-50/60' : 'bg-white'
                               }`}
                             >
                               <span>{label}</span>
@@ -3682,20 +3780,20 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </Dialog>
 
             <Dialog open={travelReportMapDialogOpen} onOpenChange={setTravelReportMapDialogOpen}>
-              <DialogContent className="max-w-5xl">
+              <DialogContent className="max-w-5xl border-blue-200 bg-gradient-to-b from-white to-blue-50/40">
                 <DialogHeader>
                   <DialogTitle>Mapa do trajeto</DialogTitle>
                   <DialogDescription>Rota da solicitação selecionada.</DialogDescription>
                 </DialogHeader>
                 {reportRouteMap.embedUrl ? (
                   <div className="space-y-3">
-                    <div className="overflow-hidden rounded-lg border border-graphite-200">
+                    <div className="overflow-hidden rounded-lg border border-blue-200">
                       <iframe
                         title="Mapa do trajeto da solicitação"
                         src={reportRouteMap.embedUrl}
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
-                        className="h-[60vh] w-full bg-graphite-50"
+                        className="h-[60vh] w-full bg-blue-50"
                       />
                     </div>
                     <div className="flex justify-end">
@@ -3716,74 +3814,93 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
             </Dialog>
 
             <Dialog open={travelDialogOpen} onOpenChange={setTravelDialogOpen}>
-              <DialogContent className="flex max-h-[88vh] max-w-3xl flex-col overflow-hidden">
+              <DialogContent className="flex max-h-[90vh] max-w-5xl flex-col overflow-hidden border-graphite-200 bg-gradient-to-b from-white to-graphite-50/80 shadow-xl">
                 <DialogHeader>
-                  <DialogTitle>Nova solicitação de viagem</DialogTitle>
+                  <DialogTitle className="text-xl text-graphite-900">Nova solicitação de viagem</DialogTitle>
                   <DialogDescription>
-                    Escolha o tipo da solicitação e registre os dados básicos para integração ao RM.
+                    Fluxo simplificado para preenchimento rápido, com validação em tempo real.
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="overflow-y-auto pr-1">
-                {!travelDraft.tipoSolicitacao ? (
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    {TRAVEL_TYPE_OPTIONS.map((option) => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleSelectTravelType(option.value)}
-                        className="rounded-lg border border-graphite-200 bg-white p-4 text-left transition-colors hover:border-graphite-300 hover:bg-graphite-50"
-                      >
-                        <p className="text-sm font-semibold text-graphite-900">{option.label}</p>
-                        <p className="mt-1 text-xs text-graphite-500">{option.description}</p>
-                      </button>
-                    ))}
-                  </div>
-                ) : (
+                <div className="overflow-y-auto pr-2">
                   <div className="space-y-4">
-                    <div className="rounded-xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/40 p-4 shadow-sm">
-                      <div className="mb-3 flex items-center justify-between">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Resumo da solicitação</p>
-                        <Badge variant="secondary" className="bg-graphite-100 text-graphite-700">
-                          {travelDraft.tipoSolicitacao}
+                    <div className="rounded-2xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/70 p-5 shadow-sm">
+                      <div className="mb-4 flex items-center justify-between">
+                        <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                          <DocumentTextIcon className="h-4 w-4" />
+                          Resumo da solicitação
+                        </p>
+                        <Badge variant="secondary" className="border-graphite-200 bg-graphite-100 text-graphite-700">
+                          {travelDraft.tipoSolicitacao || 'Selecione o tipo'}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Tipo</label>
-                          <Input
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div className="space-y-1.5">
+                          <label className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <BriefcaseIcon className="h-3.5 w-3.5" />
+                            Tipo
+                          </label>
+                          <Select
                             value={travelDraft.tipoSolicitacao}
-                            disabled
-                            className="bg-graphite-50"
-                          />
+                            onValueChange={(value) => handleTravelDraftChange('tipoSolicitacao', value)}
+                          >
+                            <SelectTrigger className="h-11 rounded-lg border-graphite-200 bg-white">
+                              <SelectValue placeholder="Selecione o tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {TRAVEL_TYPE_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Número RM</label>
-                          <Input
-                            value={travelDraft.numeroRm || 'Será preenchido após integração no ERP'}
-                            disabled
-                            className="bg-graphite-50 font-mono"
-                          />
+                        <div className="space-y-1.5">
+                          <label className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <KeyIcon className="h-3.5 w-3.5" />
+                            Número RM
+                          </label>
+                          <div className="relative">
+                            <KeyIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+                            <Input
+                              value={travelDraft.numeroRm || 'Será preenchido após integração no ERP'}
+                              disabled
+                              className="h-11 rounded-lg border-graphite-200 bg-graphite-50 pl-9 font-mono text-xs"
+                            />
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Início</label>
-                          <Input
-                            type="date"
-                            value={travelDraft.periodoInicio}
-                            onChange={(e) => handleTravelDraftChange('periodoInicio', e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Fim</label>
-                          <Input
-                            type="date"
-                            value={travelDraft.periodoFim}
-                            onChange={(e) => handleTravelDraftChange('periodoFim', e.target.value)}
-                            min={travelDraft.periodoInicio || undefined}
-                            disabled={!travelDraft.periodoInicio}
-                            required
-                          />
+                        <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
+                          <label className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <CalendarIcon className="h-3.5 w-3.5" />
+                            Período da viagem
+                          </label>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="outline"
+                                className="h-11 w-full justify-start rounded-lg border-graphite-200 bg-white px-3 text-left font-normal text-graphite-900 hover:bg-graphite-50"
+                              >
+                                <CalendarIcon className="mr-2 h-4 w-4 text-graphite-500" />
+                                <span className={travelDateRange.from ? '' : 'text-graphite-500'}>
+                                  {travelDateRangeLabel}
+                                </span>
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto border-graphite-200 p-0" align="start">
+                              <Calendar
+                                mode="range"
+                                locale={ptBR}
+                                selected={travelDateRange}
+                                onSelect={(range) => {
+                                  handleTravelDraftChange('periodoInicio', toInputDateValue(range?.from));
+                                  handleTravelDraftChange('periodoFim', toInputDateValue(range?.to));
+                                }}
+                                defaultMonth={travelDateRange.from}
+                                numberOfMonths={2}
+                              />
+                            </PopoverContent>
+                          </Popover>
                         </div>
                       </div>
                       {hasInvalidTravelDateRange && (
@@ -3791,14 +3908,14 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       )}
                     </div>
 
-                    <div className="overflow-visible rounded-xl border border-sky-200 bg-gradient-to-b from-sky-50/70 to-white p-4 shadow-sm">
+                    <div className="overflow-visible rounded-xl border border-graphite-200 bg-gradient-to-b from-graphite-50/80 to-white p-4 shadow-sm">
                       <div className="mb-3 flex items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700">
+                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-700">
                             <ArrowRightIcon className="h-4 w-4" />
                             Traslado
                           </p>
-                          <p className="text-xs text-graphite-600">
+                          <p className="text-xs text-graphite-700">
                             Informe origem e destino para calcular automaticamente a distância estimada.
                           </p>
                           <label className="mt-2 inline-flex cursor-pointer items-center gap-2 text-xs font-medium text-graphite-700">
@@ -3811,14 +3928,14 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                 setTravelTollError('');
                                 lastTravelKmQuery.current = '';
                               }}
-                              className="h-4 w-4 rounded border-graphite-300 text-sky-700 focus:ring-sky-200"
+                              className="h-4 w-4 rounded border-graphite-300 text-primary focus:ring-graphite-200"
                             />
                             Considerar ida e volta
                           </label>
                         </div>
-                        <div className="rounded-lg border border-sky-200 bg-white px-3 py-2 text-right">
-                          <p className="text-[10px] font-semibold uppercase tracking-wide text-graphite-500">KM estimado</p>
-                          <p className="text-base font-semibold text-sky-800">
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-2 text-right">
+                          <p className="text-[10px] font-semibold uppercase tracking-wide text-graphite-600">KM estimado</p>
+                          <p className="text-base font-semibold text-graphite-900">
                             {travelKmLoading
                               ? 'Calculando...'
                               : travelDraft.kmEstimado
@@ -3837,7 +3954,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             type="button"
                             onClick={handleOpenTravelMap}
                             disabled={!canOpenTravelMap}
-                            className="mt-2 inline-flex items-center rounded-md border border-sky-300 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-800 transition-colors hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
+                            className="mt-2 inline-flex items-center rounded-md border border-graphite-300 bg-white px-2.5 py-1 text-xs font-medium text-graphite-700 transition-colors hover:bg-graphite-50 disabled:cursor-not-allowed disabled:opacity-60"
                           >
                             <MapPinIcon className="mr-1 h-3.5 w-3.5" />
                             Visualizar mapa
@@ -3849,15 +3966,15 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <p className="mt-1 text-xs text-red-600">{travelTollError}</p>
                           )}
                           {!canOpenTravelMap && (
-                            <p className="mt-1 text-xs text-graphite-500">Preencha origem e destino para habilitar o mapa.</p>
+                            <p className="mt-1 text-xs text-graphite-600">Preencha origem e destino para habilitar o mapa.</p>
                           )}
                         </div>
                       </div>
 
                       <div className="space-y-3">
                         <div className="rounded-lg border border-graphite-200 bg-white px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                            <MapPinIcon className="h-4 w-4 text-sky-600" />
+                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <MapPinIcon className="h-4 w-4 text-primary" />
                             Endereço de origem
                           </label>
                           <div className="relative">
@@ -3865,7 +3982,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                               value={travelDraft.origem}
                               onChange={(e) => handleTravelDraftChange('origem', e.target.value)}
                               placeholder="Rua, número, bairro, cidade"
-                              className="h-11"
+                              className="h-11 rounded-lg border-graphite-200 bg-white"
                               required
                             />
                             {travelOriginSuggestions.length > 0 && (
@@ -3874,7 +3991,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                   <button
                                     key={`origem-${suggestion.placeId || suggestion.text}`}
                                     type="button"
-                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-700 transition-colors hover:bg-graphite-50 last:border-b-0"
+                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-900 transition-colors hover:bg-graphite-50 last:border-b-0"
                                     onClick={() => handleSelectTravelSuggestion('origem', suggestion)}
                                   >
                                     {suggestion.text}
@@ -3886,8 +4003,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         </div>
 
                         <div className="rounded-lg border border-graphite-200 bg-white px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
-                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                            <FlagIcon className="h-4 w-4 text-sky-600" />
+                          <label className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <FlagIcon className="h-4 w-4 text-primary" />
                             Endereço de destino
                           </label>
                           <div className="relative">
@@ -3895,7 +4012,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                               value={travelDraft.destino}
                               onChange={(e) => handleTravelDraftChange('destino', e.target.value)}
                               placeholder="Rua, número, bairro, cidade"
-                              className="h-11"
+                              className="h-11 rounded-lg border-graphite-200 bg-white"
                               required
                             />
                             {travelDestinationSuggestions.length > 0 && (
@@ -3904,7 +4021,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                   <button
                                     key={`destino-${suggestion.placeId || suggestion.text}`}
                                     type="button"
-                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-700 transition-colors hover:bg-graphite-50 last:border-b-0"
+                                    className="block w-full border-b border-graphite-100 px-3 py-2 text-left text-sm text-graphite-900 transition-colors hover:bg-graphite-50 last:border-b-0"
                                     onClick={() => handleSelectTravelSuggestion('destino', suggestion)}
                                   >
                                     {suggestion.text}
@@ -3916,7 +4033,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         </div>
 
                         {(travelAutocompleteLoading.origem || travelAutocompleteLoading.destino) && (
-                          <p className="text-xs text-graphite-500">Buscando sugestões de endereço...</p>
+                          <p className="text-xs text-graphite-600">Buscando sugestões de endereço...</p>
                         )}
                         {travelMapsConfigMissing && (
                           <p className="text-xs text-amber-700">
@@ -3931,7 +4048,8 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     </div>
 
                     <div className="rounded-xl border border-graphite-200 bg-white p-4 shadow-sm">
-                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                      <label className="mb-1 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                        <FolderIcon className="h-4 w-4" />
                         Centro de Custo
                       </label>
                       <Select
@@ -3939,7 +4057,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         onValueChange={(value) => handleTravelDraftChange('motivo', value)}
                         disabled={requestCentroLoading || travelRateioEnabled}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-11 rounded-lg border-graphite-200 bg-white">
                           <SelectValue
                             placeholder={
                               requestCentroLoading ? 'Carregando centros de custo...' : 'Selecione um centro de custo'
@@ -3966,15 +4084,15 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         </SelectContent>
                       </Select>
                       {travelRateioEnabled && (
-                        <p className="mt-2 text-xs text-graphite-500">
+                        <p className="mt-2 text-xs text-graphite-600">
                           Campo desabilitado enquanto o rateio estiver habilitado.
                         </p>
                       )}
                       {requestCentroError && <p className="mt-2 text-xs text-red-600">{requestCentroError}</p>}
                     </div>
 
-                    <div className="rounded-xl border border-indigo-200 bg-indigo-50/40 p-4 shadow-sm">
-                      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-indigo-900">
+                    <div className="rounded-xl border border-graphite-200 bg-graphite-50 p-4 shadow-sm">
+                      <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-graphite-900">
                         <input
                           type="checkbox"
                           checked={travelRateioEnabled}
@@ -3986,33 +4104,35 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             }
                             setTravelRateioError('');
                           }}
-                          className="h-4 w-4 rounded border-indigo-300 text-indigo-700 focus:ring-indigo-200"
+                          className="h-4 w-4 rounded border-graphite-300 text-primary focus:ring-graphite-200"
                         />
                         Ratear valores entre centros de custo
                       </label>
-                      <p className="mt-2 text-xs text-indigo-700">
+                      <p className="mt-2 text-xs text-graphite-600">
                         Quando habilitado, o sistema abrirá a próxima tela para distribuição por percentual.
                       </p>
                     </div>
 
-                    <div className="rounded-xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/50 p-4 shadow-sm">
-                      <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="rounded-2xl border border-graphite-200 bg-gradient-to-b from-white to-graphite-50/70 p-5 shadow-sm">
+                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                            <BriefcaseIcon className="h-4 w-4 text-graphite-500" />
+                          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                            <BriefcaseIcon className="h-4 w-4 text-primary" />
                             Itens da viagem
                           </p>
-                          <p className="text-xs text-graphite-500">
+                          <p className="text-xs text-graphite-600">
                             Selecione os itens aplicáveis e informe os valores previstos.
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Button
                             variant="outline"
                             size="sm"
                             onClick={handleIncludeEstimatedKmItem}
                             disabled={disableEstimatedInsertButtons}
+                            className="border-graphite-300 bg-white text-graphite-700 hover:bg-graphite-50"
                           >
+                            <ArrowTrendingUpIcon className="mr-1 h-4 w-4" />
                             Incluir KM estimado
                           </Button>
                           <Button
@@ -4020,15 +4140,19 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             size="sm"
                             onClick={handleIncludeEstimatedTollItem}
                             disabled={disableEstimatedInsertButtons}
+                            className="border-graphite-300 bg-white text-graphite-700 hover:bg-graphite-50"
                           >
+                            <ReceiptPercentIcon className="mr-1 h-4 w-4" />
                             Adicionar pedágio estimado
                           </Button>
-                          <Button variant="secondary" size="sm" onClick={handleAddTravelItem}>
+                          <Button variant="secondary" size="sm" onClick={handleAddTravelItem} className="bg-primary text-white hover:bg-primary/90">
+                            <DocumentTextIcon className="mr-1 h-4 w-4" />
                             Adicionar item
                           </Button>
                         </div>
                       </div>
-                      <div className="hidden grid-cols-[minmax(150px,1fr)_120px_90px_120px_110px_36px] gap-2 rounded-md bg-graphite-100/70 px-2 py-2 text-xs font-medium text-graphite-600 sm:grid">
+                      <div className="hidden grid-cols-[32px_minmax(220px,1fr)_140px_110px_140px_126px_40px] gap-2 rounded-lg bg-graphite-100 px-3 py-2 text-xs font-semibold text-graphite-700 sm:grid">
+                        <span>#</span>
                         <span>Item</span>
                         <span className="text-right">Valor unitário (R$)</span>
                         <span className="text-right">Qde.</span>
@@ -4036,17 +4160,20 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                         <span className="text-center">Anexar</span>
                         <span />
                       </div>
-                      <div className="space-y-2">
+                      <div className="space-y-2.5">
                         {travelItems.map((entry, index) => (
                           <div
                             key={`travel-item-${index}`}
-                            className="grid grid-cols-1 gap-2 rounded-lg border border-graphite-200 bg-white px-2 py-2 shadow-[0_1px_0_rgba(15,23,42,0.04)] sm:grid-cols-[minmax(150px,1fr)_120px_90px_120px_110px_36px] sm:items-center"
+                            className="grid grid-cols-1 gap-2 rounded-xl border border-graphite-200 bg-white px-3 py-3 shadow-[0_1px_0_rgba(15,23,42,0.04)] sm:grid-cols-[32px_minmax(220px,1fr)_140px_110px_140px_126px_40px] sm:items-center"
                           >
+                            <div className="hidden items-center justify-center rounded-md border border-graphite-200 bg-graphite-50 text-xs font-semibold text-graphite-700 sm:flex">
+                              {index + 1}
+                            </div>
                             <Select
                               value={entry.item}
                               onValueChange={(value) => handleTravelItemChange(index, 'item', value)}
                             >
-                              <SelectTrigger>
+                              <SelectTrigger className="h-10 rounded-lg border-graphite-200 bg-white">
                                 <SelectValue placeholder="Selecione um item..." />
                               </SelectTrigger>
                               <SelectContent>
@@ -4064,7 +4191,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                               </SelectContent>
                             </Select>
                             <div className="relative">
-                              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-graphite-500">
+                              <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs text-graphite-600">
                                 R$
                               </span>
                               <Input
@@ -4074,7 +4201,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                 placeholder="0,00"
                                 value={entry.valorUnitario}
                                 onChange={(e) => handleTravelItemChange(index, 'valorUnitario', e.target.value)}
-                                className="pl-8 text-right"
+                                className="h-10 rounded-lg border-graphite-200 bg-white pl-8 text-right"
                               />
                             </div>
                             <Input
@@ -4084,9 +4211,9 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                               placeholder="0,00"
                               value={entry.quantidade}
                               onChange={(e) => handleTravelItemChange(index, 'quantidade', e.target.value)}
-                              className="text-right"
+                              className="h-10 rounded-lg border-graphite-200 bg-white text-right"
                             />
-                            <div className="rounded-md border border-graphite-200 bg-graphite-50 px-2 py-2 text-right text-sm font-medium text-graphite-800">
+                            <div className="rounded-lg border border-graphite-200 bg-graphite-50 px-2.5 py-2 text-right text-sm font-semibold text-graphite-900">
                               R$ {getTravelItemLineTotal(entry).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                             </div>
                             <Button
@@ -4100,7 +4227,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                                 !(Number(entry.valorUnitario) > 0) ||
                                 !(Number(entry.quantidade) > 0)
                               }
-                              className="justify-center"
+                              className="h-10 justify-center border-graphite-300 bg-white text-graphite-700 hover:bg-graphite-50"
                               title={
                                 entry.item === 'KM estimado'
                                   ? 'Anexo indisponível para KM estimado'
@@ -4114,7 +4241,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             </Button>
                             <button
                               type="button"
-                              className="rounded-md p-2 text-graphite-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                              className="rounded-lg p-2 text-graphite-500 transition-colors hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
                               onClick={() => handleRemoveTravelItem(index)}
                               disabled={travelItems.length === 1}
                               title="Excluir item"
@@ -4124,11 +4251,21 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                           </div>
                         ))}
                       </div>
-                      <div className="mt-3 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-right">
-                        <p className="text-xs uppercase tracking-wide text-emerald-700">Valor total</p>
-                        <p className="text-lg font-bold text-emerald-900">
-                          R$ {travelItemsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
+                      <div className="mt-3 grid grid-cols-1 gap-2 rounded-xl border border-graphite-300 bg-graphite-100 px-4 py-3 sm:grid-cols-3">
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-2 text-center">
+                          <p className="text-[11px] uppercase tracking-wide text-graphite-600">Linhas</p>
+                          <p className="text-lg font-semibold text-graphite-900">{travelItems.length}</p>
+                        </div>
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-2 text-center">
+                          <p className="text-[11px] uppercase tracking-wide text-graphite-600">Itens com anexo</p>
+                          <p className="text-lg font-semibold text-graphite-900">{Object.keys(travelItemAttachments).length}</p>
+                        </div>
+                        <div className="rounded-lg border border-graphite-200 bg-white px-3 py-2 text-center">
+                          <p className="text-[11px] uppercase tracking-wide text-graphite-600">Valor total</p>
+                          <p className="text-lg font-bold text-graphite-900">
+                            R$ {travelItemsTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
                       </div>
                       <input
                         ref={travelItemFileInputRef}
@@ -4140,21 +4277,21 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     </div>
 
                     <div className="space-y-2 rounded-xl border border-graphite-200 bg-white p-4">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
+                      <label className="text-xs font-semibold uppercase tracking-wide text-graphite-700">
                         Conferir anexos
                       </label>
                       <div className="space-y-2 rounded-lg border border-graphite-200 bg-graphite-50 p-3">
                         {Object.keys(travelItemAttachments).length === 0 && (
-                          <p className="text-sm text-graphite-500">
+                          <p className="text-sm text-graphite-600">
                             Nenhum anexo informado. Use o botão `Anexar` em cada item.
                           </p>
                         )}
                         {Object.entries(travelItemAttachments).map(([itemName, files]) => (
                           <div key={`attachments-${itemName}`} className="rounded-md border border-graphite-200 bg-white p-2">
-                            <p className="text-sm font-semibold text-graphite-800">{itemName}</p>
+                            <p className="text-sm font-semibold text-graphite-900">{itemName}</p>
                             <ul className="mt-1 space-y-1">
                               {files.map((file, fileIndex) => (
-                                <li key={`${itemName}-${file.name}-${fileIndex}`} className="flex items-center justify-between text-sm text-graphite-600">
+                                <li key={`${itemName}-${file.name}-${fileIndex}`} className="flex items-center justify-between text-sm text-graphite-700">
                                   <span className="truncate">{file.name}</span>
                                   <button
                                     type="button"
@@ -4175,69 +4312,65 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                     </div>
 
                     <div className="rounded-xl border border-graphite-200 bg-white p-4">
-                      <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">Observação</label>
+                      <label className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-graphite-700">
+                        <DocumentTextIcon className="h-4 w-4" />
+                        Observação
+                      </label>
                       <Textarea
                         value={travelDraft.observacao}
                         onChange={(e) => handleTravelDraftChange('observacao', e.target.value)}
                         placeholder="Descreva objetivo da viagem, centros atendidos e justificativa."
-                        className="mt-2 min-h-[90px]"
+                        className="mt-2 min-h-[100px] rounded-lg border-graphite-200 bg-white"
                       />
                     </div>
                   </div>
-                )}
                 {travelFormError && (
                   <p className="mt-3 text-sm font-medium text-red-600">{travelFormError}</p>
                 )}
                 </div>
 
                 <DialogFooter>
-                  {travelDraft.tipoSolicitacao ? (
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" onClick={() => setTravelDraft(createTravelDraft())}>
-                        Voltar
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={handleIntegrateTravelWithRm}
-                        disabled={travelIntegrating || travelSaving || hasInvalidTravelDateRange}
-                      >
-                        {travelIntegrating ? 'Integrando...' : 'Integrar ao RM'}
-                      </Button>
-                      <Button
-                        onClick={travelRateioEnabled ? handleProceedToTravelRateio : handleSaveTravel}
-                        disabled={travelSaving || hasInvalidTravelDateRange}
-                      >
-                        {travelSaving
-                          ? 'Salvando...'
-                          : travelRateioEnabled
-                          ? 'Informar Rateio'
-                          : 'Salvar solicitação'}
-                      </Button>
-                    </div>
-                  ) : (
+                  <div className="flex w-full flex-wrap items-center justify-end gap-2">
                     <DialogClose asChild>
                       <Button variant="outline">Cancelar</Button>
                     </DialogClose>
-                  )}
+                    <Button
+                      variant="secondary"
+                      onClick={handleIntegrateTravelWithRm}
+                      disabled={travelIntegrating || travelSaving || hasInvalidTravelDateRange || !travelDraft.tipoSolicitacao}
+                    >
+                      {travelIntegrating ? 'Integrando...' : 'Integrar ao RM'}
+                    </Button>
+                    <Button
+                      onClick={travelRateioEnabled ? handleProceedToTravelRateio : handleSaveTravel}
+                      disabled={travelSaving || hasInvalidTravelDateRange || !travelDraft.tipoSolicitacao}
+                    >
+                      {travelSaving
+                        ? 'Salvando...'
+                        : travelRateioEnabled
+                        ? 'Informar Rateio'
+                        : 'Salvar solicitação'}
+                    </Button>
+                  </div>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
 
             <Dialog open={travelMapDialogOpen} onOpenChange={setTravelMapDialogOpen}>
-              <DialogContent className="max-w-5xl">
+              <DialogContent className="max-w-5xl border-blue-200 bg-gradient-to-b from-white to-blue-50/40">
                 <DialogHeader>
                   <DialogTitle>Mapa do trajeto</DialogTitle>
                   <DialogDescription>Visualização da rota entre origem e destino informados.</DialogDescription>
                 </DialogHeader>
                 {travelRouteMap.embedUrl ? (
                   <div className="space-y-3">
-                    <div className="overflow-hidden rounded-lg border border-graphite-200">
+                    <div className="overflow-hidden rounded-lg border border-blue-200">
                       <iframe
                         title="Mapa do trajeto"
                         src={travelRouteMap.embedUrl}
                         loading="lazy"
                         referrerPolicy="no-referrer-when-downgrade"
-                        className="h-[60vh] w-full bg-graphite-50"
+                        className="h-[60vh] w-full bg-blue-50"
                       />
                     </div>
                     <div className="flex justify-end">
@@ -4264,26 +4397,26 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                 if (!open) setTravelRateioError('');
               }}
             >
-              <DialogContent className="max-w-3xl">
+              <DialogContent className="max-w-3xl border-blue-200 bg-gradient-to-b from-white to-blue-50/50">
                 <DialogHeader>
                   <DialogTitle>Rateio por centro de custo</DialogTitle>
                   <DialogDescription>Distribuição das despesas por percentual.</DialogDescription>
                 </DialogHeader>
 
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900">
+                  <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
                     Você habilitou a opção ratear valores, na próxima tela informe os valores de cada centro de custo
                   </div>
 
-                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-graphite-200 bg-graphite-50 p-3 sm:grid-cols-4">
+                  <div className="grid grid-cols-1 gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 sm:grid-cols-4">
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-graphite-500">Valor total (itens)</p>
-                      <p className="text-lg font-bold text-graphite-900">
+                      <p className="text-xs uppercase tracking-wide text-blue-700">Valor total (itens)</p>
+                      <p className="text-lg font-bold text-blue-950">
                         R$ {Number(travelPendingSubmission?.totalValue || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-graphite-500">Percentual rateado</p>
+                      <p className="text-xs uppercase tracking-wide text-blue-700">Percentual rateado</p>
                       <p
                         className={`text-base font-semibold ${
                           Math.abs(travelRateioTotalPercent - 100) <= 0.01 ? 'text-emerald-700' : 'text-amber-700'
@@ -4293,13 +4426,13 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-graphite-500">Valor rateado</p>
-                      <p className="text-base font-semibold text-graphite-900">
+                      <p className="text-xs uppercase tracking-wide text-blue-700">Valor rateado</p>
+                      <p className="text-base font-semibold text-blue-950">
                         R$ {travelRateioTotalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs uppercase tracking-wide text-graphite-500">Diferença que falta</p>
+                      <p className="text-xs uppercase tracking-wide text-blue-700">Diferença que falta</p>
                       <p
                         className={`text-base font-semibold ${
                           Math.abs(travelRateioPercentDifference) <= 0.01 ? 'text-emerald-700' : 'text-red-700'
@@ -4312,7 +4445,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="hidden grid-cols-[minmax(220px,1fr)_120px_130px_36px] gap-2 rounded-md bg-graphite-100 px-2 py-2 text-xs font-medium text-graphite-600 sm:grid">
+                    <div className="hidden grid-cols-[minmax(220px,1fr)_120px_130px_36px] gap-2 rounded-md bg-blue-100 px-2 py-2 text-xs font-medium text-blue-800 sm:grid">
                       <span>Centro de custo</span>
                       <span className="text-right">Percentual</span>
                       <span className="text-right">Valor</span>
@@ -4322,7 +4455,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                       return (
                         <div
                           key={`rateio-line-${index}`}
-                          className="grid grid-cols-1 gap-2 rounded-lg border border-graphite-200 bg-white px-2 py-2 sm:grid-cols-[minmax(220px,1fr)_120px_130px_36px] sm:items-center"
+                          className="grid grid-cols-1 gap-2 rounded-lg border border-blue-200 bg-white px-2 py-2 sm:grid-cols-[minmax(220px,1fr)_120px_130px_36px] sm:items-center"
                         >
                           <Select
                             value={line.centroCusto}
@@ -4402,6 +4535,234 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
         );
       }
 
+      case 'configuracoes-usuarios': {
+        const userColumns = [
+          { key: 'username', label: 'Usuário' },
+          { key: 'displayName', label: 'Nome' },
+          { key: 'email', label: 'E-mail' },
+          { key: 'role', label: 'Perfil', filterMode: 'select' },
+          { key: 'lastLogin', label: 'Último acesso', enableFilter: false },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge
+                variant="secondary"
+                className={
+                  row.status === 'Ativo'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-graphite-200 bg-graphite-100 text-graphite-700'
+                }
+              >
+                {row.status}
+              </Badge>
+            ),
+          },
+          {
+            key: 'actions',
+            label: 'Ação',
+            enableFilter: false,
+            cell: (row) => (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleLocalUserStatus(row.username);
+                }}
+              >
+                {row.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+              </Button>
+            ),
+          },
+        ];
+
+        return (
+          <div className="space-y-6">
+            <Card className="border-blue-100">
+              <CardHeader className="gap-2">
+                <CardTitle className="text-xl">Gestão de Usuários</CardTitle>
+                <CardDescription>
+                  Cadastro local para controle de acesso e auditoria interna.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-4">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Usuário</label>
+                    <Input
+                      value={userForm.username}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, username: e.target.value }))}
+                      placeholder="nome.sobrenome"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Nome</label>
+                    <Input
+                      value={userForm.displayName}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, displayName: e.target.value }))}
+                      placeholder="Nome completo"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">E-mail</label>
+                    <Input
+                      value={userForm.email}
+                      onChange={(e) => setUserForm((prev) => ({ ...prev, email: e.target.value }))}
+                      placeholder="usuario@empresa.com.br"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Perfil</label>
+                    <Select
+                      value={userForm.role}
+                      onValueChange={(value) => setUserForm((prev) => ({ ...prev, role: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Administrador">Administrador</SelectItem>
+                        <SelectItem value="Financeiro">Financeiro</SelectItem>
+                        <SelectItem value="Gestor">Gestor</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  {localUsersError ? (
+                    <p className="text-sm text-red-600">{localUsersError}</p>
+                  ) : userFormError ? (
+                    <p className="text-sm text-red-600">{userFormError}</p>
+                  ) : (
+                    <p className="text-sm text-graphite-500">Usuários sincronizados no controle local.</p>
+                  )}
+                  <Button onClick={handleCreateLocalUser} disabled={localUsersLoading}>
+                    {localUsersLoading ? 'Carregando...' : 'Adicionar usuário'}
+                  </Button>
+                </div>
+
+                <DataTable
+                  columns={userColumns}
+                  data={localUsers}
+                  filterTitle="Filtros de Usuários"
+                  emptyMessage="Nenhum usuário cadastrado."
+                />
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
+      case 'configuracoes-chaves-api': {
+        const apiKeyColumns = [
+          { key: 'keyName', label: 'Nome da chave' },
+          { key: 'projectId', label: 'Projeto' },
+          { key: 'keyPreview', label: 'Chave (prévia)', enableFilter: false },
+          { key: 'updatedAt', label: 'Atualizada em', enableFilter: false },
+          {
+            key: 'status',
+            label: 'Status',
+            filterMode: 'select',
+            cell: (row) => (
+              <Badge
+                variant="secondary"
+                className={
+                  row.status === 'Ativa'
+                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                    : 'border-graphite-200 bg-graphite-100 text-graphite-700'
+                }
+              >
+                {row.status}
+              </Badge>
+            ),
+          },
+          {
+            key: 'actions',
+            label: 'Ação',
+            enableFilter: false,
+            cell: (row) => (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  handleToggleApiKeyStatus(row.keyName);
+                }}
+              >
+                {row.status === 'Ativa' ? 'Desativar' : 'Ativar'}
+              </Button>
+            ),
+          },
+        ];
+
+        return (
+          <div className="space-y-6">
+            <Card className="border-blue-100">
+              <CardHeader className="gap-2">
+                <CardTitle className="inline-flex items-center gap-2 text-xl">
+                  <KeyIcon className="h-5 w-5 text-blue-700" />
+                  Gestão de Chaves API
+                </CardTitle>
+                <CardDescription>
+                  Controle de chaves técnicas para integrações (Google Maps e serviços externos).
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 gap-3 rounded-xl border border-blue-100 bg-blue-50/60 p-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Nome da chave</label>
+                    <Input
+                      value={apiKeyForm.keyName}
+                      onChange={(e) => setApiKeyForm((prev) => ({ ...prev, keyName: e.target.value }))}
+                      placeholder="maps-web-prod"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Projeto</label>
+                    <Input
+                      value={apiKeyForm.projectId}
+                      onChange={(e) => setApiKeyForm((prev) => ({ ...prev, projectId: e.target.value }))}
+                      placeholder="rm-despesas-prod"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-blue-700">Valor da API key</label>
+                    <Input
+                      value={apiKeyForm.apiKey}
+                      onChange={(e) => setApiKeyForm((prev) => ({ ...prev, apiKey: e.target.value }))}
+                      placeholder="AIzaSy..."
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  {googleApiKeysError ? (
+                    <p className="text-sm text-red-600">{googleApiKeysError}</p>
+                  ) : apiKeyFormError ? (
+                    <p className="text-sm text-red-600">{apiKeyFormError}</p>
+                  ) : (
+                    <p className="text-sm text-graphite-500">
+                      As chaves são mascaradas na interface por segurança operacional.
+                    </p>
+                  )}
+                  <Button onClick={handleCreateApiKey} disabled={googleApiKeysLoading}>
+                    {googleApiKeysLoading ? 'Carregando...' : 'Salvar chave'}
+                  </Button>
+                </div>
+
+                <DataTable
+                  columns={apiKeyColumns}
+                  data={googleApiKeys}
+                  filterTitle="Filtros de Chaves API"
+                  emptyMessage="Nenhuma chave cadastrada."
+                />
+              </CardContent>
+            </Card>
+          </div>
+        );
+      }
+
       case 'relatorios': {
         const relatoriosColumns = [
           { key: 'relatorio', label: 'Relatório' },
@@ -4473,112 +4834,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                   </div>
                 </TabsContent>
               </Tabs>
-            </div>
-          </div>
-        );
-      }
-
-      case 'configuracoes': {
-        return (
-          <div className="space-y-6">
-            <div className="rounded-lg border border-graphite-200 bg-white p-6">
-              <div className="mb-6 flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-semibold text-graphite-900">Configurações de Integração</h2>
-                  <p className="text-graphite-500">
-                    Centralize APIs e chaves em um único local (frontend + backend).
-                  </p>
-                </div>
-                <Button
-                  variant="default"
-                  onClick={handleSaveIntegrationConfig}
-                  disabled={integrationConfigSaving}
-                >
-                  {integrationConfigSaving ? 'Salvando...' : 'Salvar configurações'}
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                    URL do backend
-                  </label>
-                  <Input
-                    value={integrationConfig.backendBaseUrl}
-                    onChange={(e) => handleIntegrationConfigChange('backendBaseUrl', e.target.value)}
-                    placeholder="http://localhost:8787"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                    URL da API RM
-                  </label>
-                  <Input
-                    value={integrationConfig.rmApiBaseUrl}
-                    onChange={(e) => handleIntegrationConfigChange('rmApiBaseUrl', e.target.value)}
-                    placeholder="http://servidor-rm:8051"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                    Endpoint usuários RM
-                  </label>
-                  <Input
-                    value={integrationConfig.rmAuthUsersPath}
-                    onChange={(e) => handleIntegrationConfigChange('rmAuthUsersPath', e.target.value)}
-                    placeholder="/api/framework/v1/users"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                    Endpoint Consulta SQL RM
-                  </label>
-                  <Input
-                    value={integrationConfig.rmConsultaBasePath}
-                    onChange={(e) => handleIntegrationConfigChange('rmConsultaBasePath', e.target.value)}
-                    placeholder="/api/framework/v1/consultaSQLServer/RealizaConsulta"
-                  />
-                </div>
-                <div className="space-y-1 md:col-span-2">
-                  <label className="text-xs font-semibold uppercase tracking-wide text-graphite-500">
-                    Chave Google Maps (Routes/Places)
-                  </label>
-                  <div className="relative">
-                    <Input
-                      type={showGoogleApiKey ? 'text' : 'password'}
-                      value={integrationConfig.googleMapsApiKey}
-                      onChange={(e) => handleIntegrationConfigChange('googleMapsApiKey', e.target.value)}
-                      placeholder="Cole aqui a chave da API"
-                      className="pr-10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowGoogleApiKey((prev) => !prev)}
-                      className="absolute inset-y-0 right-0 inline-flex items-center px-3 text-graphite-500 transition-colors hover:text-graphite-700"
-                      aria-label={showGoogleApiKey ? 'Ocultar chave' : 'Exibir chave'}
-                      title={showGoogleApiKey ? 'Ocultar chave' : 'Exibir chave'}
-                    >
-                      {showGoogleApiKey ? (
-                        <EyeSlashIcon className="h-4 w-4" />
-                      ) : (
-                        <EyeIcon className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-1">
-                {integrationConfigStatus && (
-                  <p className="text-sm text-emerald-600">{integrationConfigStatus}</p>
-                )}
-                {integrationConfigError && (
-                  <p className="text-sm text-red-600">{integrationConfigError}</p>
-                )}
-                <p className="text-xs text-graphite-500">
-                  Esta configuração é temporária e local. Depois você pode migrar para perfil Admin.
-                </p>
-              </div>
             </div>
           </div>
         );
@@ -4797,6 +5052,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
+                                locale={ptBR}
                                 selected={requestDates.emissao}
                                 onSelect={(date) => {
                                   setRequestDates((prev) => ({ ...prev, emissao: date }));
@@ -4822,6 +5078,7 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
                             <PopoverContent className="w-auto p-0" align="start">
                               <Calendar
                                 mode="single"
+                                locale={ptBR}
                                 selected={requestDates.necessidade}
                                 onSelect={(date) => {
                                   setRequestDates((prev) => ({ ...prev, necessidade: date }));
@@ -5017,28 +5274,6 @@ const DashboardPage = ({ initialPage = 'dashboard' }) => {
         dialog={dialog}
       >
         <>
-        <section className="bg-white rounded-lg border border-graphite-200 p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-semibold text-graphite-900">{activeCover.title}</h2>
-              <p className="text-sm text-graphite-500">{activeCover.description}</p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <div>
-                <p className="text-xs text-graphite-500">Situação</p>
-                <p className="text-sm font-medium text-graphite-900">{activeCover.status}</p>
-              </div>
-              <div>
-                <p className="text-xs text-graphite-500">Responsável</p>
-                <p className="text-sm font-medium text-graphite-900">{activeCover.owner}</p>
-              </div>
-              <div>
-                <p className="text-xs text-graphite-500">Última atualização</p>
-                <p className="text-sm font-medium text-graphite-900">Hoje, 10:24</p>
-              </div>
-            </div>
-          </div>
-        </section>
         {renderContent()}
         </>
       </DashboardLayout>

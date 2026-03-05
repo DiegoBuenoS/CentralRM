@@ -34,7 +34,16 @@ export default defineConfig([
     },
   },
   {
-    files: ['vite.config.js', 'vitest.config.js', 'tailwind.config.js'],
+    files: ['apps/mobile/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+    },
+  },
+  {
+    files: ['vite.config.js', 'vitest.config.js', 'tailwind.config.js', 'apps/mobile/babel.config.js'],
     languageOptions: {
       globals: {
         ...globals.node,

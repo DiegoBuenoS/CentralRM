@@ -27,3 +27,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Runtime config local (não versionar segredo)
+apps/api/runtime-config.json
+
+# Expo / React Native
+.expo
+apps/mobile/.expo
+apps/mobile/.expo-shared
+apps/mobile/android
+apps/mobile/ios

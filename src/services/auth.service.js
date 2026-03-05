@@ -20,10 +20,6 @@ export const loginUser = async (username, password) => {
     localStorage.setItem('username', username);
     localStorage.setItem('user_data', JSON.stringify(user));
 
-    if (API_CONFIG.GENERAL.DEBUG) {
-      console.log('Login bem-sucedido:', user);
-    }
-
     return user;
   } catch (error) {
     if (API_CONFIG.GENERAL.DEBUG) {
@@ -47,10 +43,6 @@ export const logoutUser = async () => {
     localStorage.removeItem('username');
     localStorage.removeItem('user_data');
 
-    if (API_CONFIG.GENERAL.DEBUG) {
-      console.log('Logout bem-sucedido');
-    }
-
     return true;
   } catch (error) {
     if (API_CONFIG.GENERAL.DEBUG) {
@@ -71,10 +63,6 @@ export const getUserInfo = async () => {
     }
 
     const response = await apiClient.get(API_CONFIG.AUTH.ME);
-
-    if (API_CONFIG.GENERAL.DEBUG) {
-      console.log('Informações do usuário:', response.data);
-    }
 
     return response.data;
   } catch (error) {

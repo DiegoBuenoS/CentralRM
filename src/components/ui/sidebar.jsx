@@ -57,7 +57,7 @@ const Sidebar = React.forwardRef(({ className, ...props }, ref) => {
     <aside
       ref={ref}
       className={cn(
-        "flex h-screen flex-col border-r border-graphite-200 bg-white text-graphite-900 transition-all duration-300 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100",
+        "flex h-screen flex-col border-r border-blue-100 bg-white text-graphite-900 transition-all duration-300 dark:border-graphite-700 dark:bg-graphite-950 dark:text-graphite-100",
         collapsed ? "w-[4.5rem]" : "w-60",
         className
       )}
@@ -70,8 +70,8 @@ Sidebar.displayName = "Sidebar";
 const SidebarHeader = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "sticky top-0 z-10 border-b border-graphite-200 bg-white dark:border-graphite-700 dark:bg-graphite-950",
+      className={cn(
+        "sticky top-0 z-10 border-b border-blue-100 bg-white dark:border-graphite-700 dark:bg-graphite-950",
       className
     )}
     {...props}
@@ -82,8 +82,8 @@ SidebarHeader.displayName = "SidebarHeader";
 const SidebarFooter = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn(
-      "sticky bottom-0 z-10 border-t border-graphite-200 bg-white dark:border-graphite-700 dark:bg-graphite-950",
+      className={cn(
+        "sticky bottom-0 z-10 border-t border-blue-100 bg-white dark:border-graphite-700 dark:bg-graphite-950",
       className
     )}
     {...props}
@@ -120,7 +120,7 @@ const SidebarTrigger = React.forwardRef(
           }
         }}
         className={cn(
-          "inline-flex h-9 w-9 items-center justify-center rounded-md text-graphite-600 transition-colors hover:bg-graphite-100 dark:text-graphite-300 dark:hover:bg-graphite-800",
+          "inline-flex h-9 w-9 items-center justify-center rounded-md text-graphite-600 transition-colors hover:bg-blue-50 dark:text-graphite-300 dark:hover:bg-graphite-800",
           className
         )}
         {...props}

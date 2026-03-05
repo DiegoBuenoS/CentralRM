@@ -1,0 +1,100 @@
+[
+  {
+    "requestId": "DV-0010",
+    "idempotencyKey": "DV-0010",
+    "requester": "mestre",
+    "tipoSolicitacao": "Manutenção em campo",
+    "origem": "cruzeiro",
+    "destino": "sdsdsd",
+    "periodoInicio": "2026-02-23",
+    "periodoFim": "2026-02-28",
+    "kmEstimado": 0,
+    "centroCusto": "Rateado",
+    "totalValue": 100,
+    "numeroRm": null,
+    "integrationStatus": "PENDENTE",
+    "retryCount": 0,
+    "lastError": null,
+    "itens": [
+      {
+        "item": "Passagem aérea",
+        "quantidade": 1,
+        "valorUnitario": 100,
+        "total": 100
+      }
+    ],
+    "rateio": [
+      {
+        "centroCusto": "1.01.002",
+        "percentual": 10,
+        "valor": 10
+      },
+      {
+        "centroCusto": "1.01.004",
+        "percentual": 90,
+        "valor": 90
+      }
+    ],
+    "anexos": [
+      {
+        "id": "dcee62d2-848f-4c2f-bbf9-fb85ff146896",
+        "originalName": "dare.pdf",
+        "mimeType": "application/pdf",
+        "size": 325894,
+        "uploadedAt": "2026-02-23T22:22:59.836Z"
+      }
+    ],
+    "observacao": "dsdsdsdsdsdswds",
+    "payload": {
+      "id": "DV-0010",
+      "tipoSolicitacao": "Manutenção em campo",
+      "origem": "cruzeiro",
+      "destino": "sdsdsd",
+      "motivo": "",
+      "centroCusto": "Rateado",
+      "periodo": "2026-02-23 a 2026-02-28",
+      "kmEstimado": "Não calculado",
+      "numeroRm": "",
+      "total": "R$ 100,00",
+      "dataPrevistaPgto": "--",
+      "pgtoRealizadoEm": "--",
+      "status": "Aguardando integração",
+      "itens": [
+        "Passagem aérea"
+      ],
+      "itensDetalhes": [
+        {
+          "item": "Passagem aérea",
+          "quantidade": 1,
+          "valorUnitario": 100,
+          "total": 100
+        }
+      ],
+      "anexosPorItem": [
+        {
+          "item": "Passagem aérea",
+          "arquivos": [
+            "dare.pdf"
+          ]
+        }
+      ],
+      "rateio": [
+        {
+          "centroCusto": "1.01.002",
+          "percentual": 10,
+          "valor": 10
+        },
+        {
+          "centroCusto": "1.01.004",
+          "percentual": 90,
+          "valor": 90
+        }
+      ],
+      "anexos": 1,
+      "totalValue": 100
+    },
+    "createdAt": "2026-02-23T22:22:59.844Z",
+    "updatedAt": "2026-02-23T22:22:59.844Z",
+    "integratedAt": null
+  }
+]

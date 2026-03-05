@@ -13,7 +13,7 @@ const Table = React.forwardRef(({ className, ...props }, ref) => (
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-graphite-200 dark:[&_tr]:border-graphite-700", className)} {...props} />
+  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-blue-100 dark:[&_tr]:border-graphite-700", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -37,7 +37,7 @@ const TableRow = React.forwardRef(({ className, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
-      "border-b border-graphite-100 transition-colors hover:bg-graphite-50 data-[state=selected]:bg-graphite-100 dark:border-graphite-700 dark:hover:bg-graphite-800/60 dark:data-[state=selected]:bg-graphite-800/80",
+      "border-b border-blue-100 transition-colors hover:bg-blue-50/70 data-[state=selected]:bg-blue-100/70 dark:border-graphite-700 dark:hover:bg-graphite-800/60 dark:data-[state=selected]:bg-graphite-800/80",
       className
     )}
     {...props} />
@@ -48,7 +48,7 @@ const TableHead = React.forwardRef(({ className, ...props }, ref) => (
   <th
     ref={ref}
     className={cn(
-      "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-graphite-500 dark:text-graphite-300 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
+      "h-10 px-3 text-left align-middle text-xs font-semibold uppercase tracking-wide text-graphite-600 dark:text-graphite-300 [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]",
       className
     )}
     {...props} />

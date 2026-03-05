@@ -14,6 +14,7 @@ Projeto em evolução: hoje é uma **tela de login** para acesso ao RM; no futur
 ## 📋 Índice
 
 - [Sobre o Projeto](#sobre-o-projeto)
+- [Arquitetura Web + Mobile](#arquitetura-web--mobile)
 - [Funcionalidades](#funcionalidades)
 - [Tecnologias](#tecnologias)
 - [Pré-requisitos](#pré-requisitos)
@@ -48,6 +49,128 @@ uma **experiência de login** integrada à API do RM, com foco em simplicidade e
 - ✅ Totalmente responsivo (mobile, tablet, desktop)
 - ✅ Código limpo e bem documentado
 - ✅ Pronto para produção
+
+---
+
+## 🧱 Arquitetura Web + Mobile
+
+O projeto agora está organizado para rodar:
+
+- **Web desktop**: aplicação React + Vite na raiz
+- **Mobile iOS/Android**: app Expo em `apps/mobile`
+- **Shared package**: código compartilhado em `packages/shared`
+
+### Estrutura
+
+```bash
+.
+├── apps/
+│   ├── api/               # Backend Express (isolado)
+│   └── mobile/            # App Expo (iOS/Android)
+├── packages/
+│   └── shared/            # Constantes/utilitários compartilhados
+└── src/                   # Web desktop (React + Vite)
+```
+
+### Scripts principais
+
+```bash
+# Web + backend (fluxo atual)
+npm run dev
+
+# Somente backend (API)
+npm run dev:api
+
+# Mobile (Expo)
+npm run dev:mobile
+npm run dev:mobile:ios
+npm run dev:mobile:android
+```
+
+### Pré-requisitos Mobile (macOS)
+
+- Xcode (para simulador iOS)
+- Android Studio (para emulador Android)
+- Expo CLI via `npx expo`
+
+### Primeira instalação após a estrutura monorepo
+
+```bash
+npm install
+```
+
+### Banco de dados recomendado (produção)
+
+Recomendação: **PostgreSQL**.
+
+Subir API + PostgreSQL com Docker (recomendado):
+
+```bash
+npm run docker:up
+```
+
+Parar containers:
+
+```bash
+npm run docker:down
+```
+
+Ver logs da API e banco:
+
+```bash
+npm run docker:logs
+```
+
+### Produção (stack Docker)
+
+```bash
+# sobe API + Postgres + backup diário
+npm run docker:up:prod
+
+# logs de produção
+npm run docker:logs:prod
+
+# derruba stack de produção
+npm run docker:down:prod
+```
+
+Arquivos de referência:
+
+- `apps/api/docker-compose.prod.yml`
+- `apps/api/.env.production.example`
+
+Observações:
+
+- Em produção real, prefira usar **Postgres gerenciado** (RDS/Cloud SQL/Azure Database).
+- Ajuste `FRONTEND_ORIGIN` para o domínio oficial do web.
+- Nunca versionar credenciais reais; use secrets do provedor.
+
+Se preferir rodar API fora do Docker, configure `apps/api/.env`:
+
+```bash
+DATABASE_URL=postgres://central_rm_user:central_rm_pass@localhost:5432/central_rm
+DATABASE_SSL=false
+```
+
+### Base URL do backend no app mobile
+
+O app mobile usa `EXPO_PUBLIC_API_BASE_URL` quando definida.
+
+Exemplos:
+
+```bash
+# iOS Simulator
+EXPO_PUBLIC_API_BASE_URL=http://localhost:8787 npm run dev:mobile
+
+# Android Emulator
+EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:8787 npm run dev:mobile
+```
+
+Se o mobile ainda não abrir, entre em `apps/mobile` e rode:
+
+```bash
+npx expo install
+```
 
 ---
 
@@ -240,14 +363,14 @@ No front, o helper monta a URL com base no `API_CONFIG.CONSULTA_SQL`.
 ### Desenvolvimento
 
 ```bash
-# Iniciar frontend + backend
-npm run dev:full
-
-# Iniciar apenas frontend
+# Iniciar web + backend
 npm run dev
 
+# Iniciar apenas frontend
+npm run dev:web
+
 # Iniciar apenas backend
-npm run dev:server
+npm run dev:api
 
 # Executar testes
 npm run test
