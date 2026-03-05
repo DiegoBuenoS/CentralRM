@@ -103,54 +103,18 @@ npm install
 
 Recomendação: **PostgreSQL**.
 
-Subir API + PostgreSQL com Docker (recomendado):
+Para rodar API localmente, configure `apps/api/.env`:
 
 ```bash
-npm run docker:up
+DATABASE_URL=postgres://central_rm_user:central_rm_pass@localhost:5432/central_rm
+DATABASE_SSL=false
 ```
-
-Parar containers:
-
-```bash
-npm run docker:down
-```
-
-Ver logs da API e banco:
-
-```bash
-npm run docker:logs
-```
-
-### Produção (stack Docker)
-
-```bash
-# sobe API + Postgres + backup diário
-npm run docker:up:prod
-
-# logs de produção
-npm run docker:logs:prod
-
-# derruba stack de produção
-npm run docker:down:prod
-```
-
-Arquivos de referência:
-
-- `apps/api/docker-compose.prod.yml`
-- `apps/api/.env.production.example`
 
 Observações:
 
 - Em produção real, prefira usar **Postgres gerenciado** (RDS/Cloud SQL/Azure Database).
 - Ajuste `FRONTEND_ORIGIN` para o domínio oficial do web.
 - Nunca versionar credenciais reais; use secrets do provedor.
-
-Se preferir rodar API fora do Docker, configure `apps/api/.env`:
-
-```bash
-DATABASE_URL=postgres://central_rm_user:central_rm_pass@localhost:5432/central_rm
-DATABASE_SSL=false
-```
 
 ### Chaves de API sem expor no cliente
 
