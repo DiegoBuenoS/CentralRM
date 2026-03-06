@@ -37,7 +37,7 @@ const navigationSections = [
       },
       {
         id: 'timesheet',
-        label: 'TimeSheet',
+        label: 'Time Sheet RM',
         icon: ClockIcon,
         path: '/timesheet',
       },
@@ -132,12 +132,12 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
         ))}
 
         {!collapsed && (
-          <div className="mx-2.5 rounded-xl border border-slate-300 bg-slate-50 p-3">
-            <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-graphite-900">
+          <div className="mx-2.5 rounded-xl border border-slate-300 bg-slate-50 p-3 dark:border-graphite-700 dark:bg-graphite-900">
+            <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-graphite-900 dark:text-graphite-100">
               <Cog6ToothIcon className="h-3.5 w-3.5" />
               Ambiente Administrativo
             </p>
-            <p className="mt-1 text-[11px] leading-relaxed text-graphite-600">
+            <p className="mt-1 text-[11px] leading-relaxed text-graphite-600 dark:text-graphite-300">
               Gerencie usuários locais e credenciais técnicas de integração.
             </p>
           </div>

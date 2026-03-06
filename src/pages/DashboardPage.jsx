@@ -2053,7 +2053,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
       owner: 'Administrador',
     },
     [TIMESHEET_PAGE]: {
-      title: 'TimeSheet',
+      title: 'Time Sheet RM',
       description: 'Apontamento de horas por projeto e tarefa.',
       status: 'Ativo',
       owner: 'Operação',
@@ -3578,22 +3578,22 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
 
         return (
           <div className="space-y-6">
-            <Card className="overflow-hidden border-slate-200 shadow-sm">
+            <Card className="overflow-hidden border-slate-200 shadow-sm dark:border-graphite-700">
               <CardContent className="p-0">
                 <div className="border-b border-blue-800 bg-gradient-to-r from-[#1f4f8b] via-[#255b9c] to-[#3069aa] px-5 py-3 text-white">
                   <p className="text-[11px] uppercase tracking-[0.18em] text-blue-100">Workspace</p>
                   <h2 className="mt-1 text-xl font-semibold tracking-tight">Despesas de Viagem Office</h2>
                 </div>
-                <div className="border-b border-slate-200 bg-white px-4 py-2">
+                <div className="border-b border-slate-200 bg-white px-4 py-2 dark:border-graphite-700 dark:bg-graphite-950">
                   <Tabs value={travelOfficeTab} onValueChange={setTravelOfficeTab}>
-                    <TabsList className="h-9 rounded-md border-slate-300 bg-slate-100">
+                    <TabsList className="h-9 rounded-md border-slate-300 bg-slate-100 dark:border-graphite-600 dark:bg-graphite-900">
                       <TabsTrigger value="inicio" className="text-xs">Início</TabsTrigger>
                       <TabsTrigger value="lancar" className="text-xs">Lançar</TabsTrigger>
                       <TabsTrigger value="revisar" className="text-xs">Revisar</TabsTrigger>
                     </TabsList>
                   </Tabs>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 bg-[#f4f7fb] px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2 bg-[#f4f7fb] px-4 py-3 dark:bg-graphite-900/80">
                   <Button variant="default" size="sm" onClick={handleOpenTravelDialog}>
                     Nova solicitação
                   </Button>
@@ -3604,31 +3604,31 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
                     Revisar grid
                   </Button>
                   <div className="h-6 w-px bg-slate-300" />
-                  <Badge variant="secondary" className="border border-slate-300 bg-white text-slate-700">
+                  <Badge variant="secondary" className="border border-slate-300 bg-white text-slate-700 dark:border-graphite-600 dark:bg-graphite-900 dark:text-graphite-100">
                     Total: R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </Badge>
                 </div>
               </CardContent>
             </Card>
 
-            <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 p-6 shadow-sm">
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 p-6 shadow-sm dark:border-graphite-700 dark:from-graphite-950 dark:to-graphite-900">
               {travelOfficeTab !== 'lancar' && (
                 <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-graphite-700 dark:bg-graphite-900">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Solicitações</p>
                     <p className="mt-1 text-2xl font-semibold text-graphite-900">{travelExpenses.length}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-graphite-700 dark:bg-graphite-900">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Valor total</p>
                     <p className="mt-1 text-2xl font-semibold text-graphite-900">
                       R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-graphite-700 dark:bg-graphite-900">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Integradas ao RM</p>
                     <p className="mt-1 text-2xl font-semibold text-graphite-900">{integratedCount}</p>
                   </div>
-                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3 dark:border-graphite-700 dark:bg-graphite-900">
                     <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Fluxo de pagamento</p>
                     <p className="mt-1 text-2xl font-semibold text-graphite-900">{paymentFlowCount}</p>
                     {pendingIntegrationCount > 0 && (
@@ -3639,7 +3639,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
               )}
 
               {travelOfficeTab === 'lancar' && (
-                <div className="mb-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                <div className="mb-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700 dark:border-graphite-600 dark:bg-graphite-900 dark:text-graphite-300">
                   Use o botão <span className="font-semibold">Nova solicitação</span> para abrir o formulário de apontamento
                   de despesas e anexos.
                 </div>

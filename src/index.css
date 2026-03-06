@@ -147,6 +147,95 @@
   button {
     @apply transition-colors duration-200;
   }
+
+  /* Dark mode compatibility for legacy light utility classes used across pages. */
+  .dark .bg-white {
+    background-color: #1c2534 !important;
+  }
+
+  .dark .bg-slate-50,
+  .dark .bg-slate-100 {
+    background-color: #202a3b !important;
+  }
+
+  .dark .border-slate-200,
+  .dark .border-slate-300,
+  .dark .border-slate-400 {
+    border-color: #3b4a60 !important;
+  }
+
+  .dark .text-slate-900,
+  .dark .text-slate-800,
+  .dark .text-slate-700 {
+    color: #e5edf8 !important;
+  }
+
+  .dark .text-slate-600,
+  .dark .text-slate-500 {
+    color: #c0ccdd !important;
+  }
+
+  .dark .hover\:bg-slate-50:hover,
+  .dark .hover\:bg-slate-100:hover {
+    background-color: #263247 !important;
+  }
+
+  .dark .bg-blue-50,
+  .dark .bg-blue-100,
+  .dark .bg-sky-50,
+  .dark .bg-sky-100,
+  .dark .bg-indigo-50,
+  .dark .bg-indigo-100,
+  .dark .bg-amber-50 {
+    background-color: #243247 !important;
+  }
+
+  .dark .border-blue-200,
+  .dark .border-sky-200,
+  .dark .border-indigo-200,
+  .dark .border-amber-200 {
+    border-color: #3e536f !important;
+  }
+
+  .dark .text-blue-950,
+  .dark .text-blue-900,
+  .dark .text-blue-800,
+  .dark .text-blue-700,
+  .dark .text-sky-700,
+  .dark .text-indigo-700,
+  .dark .text-amber-800,
+  .dark .text-amber-700 {
+    color: #dce8f7 !important;
+  }
+
+  .dark .bg-graphite-50,
+  .dark .bg-graphite-100 {
+    background-color: #202a3b !important;
+  }
+
+  .dark .border-graphite-100,
+  .dark .border-graphite-200,
+  .dark .border-graphite-300 {
+    border-color: #3b4a60 !important;
+  }
+
+  .dark .text-graphite-900,
+  .dark .text-graphite-800,
+  .dark .text-graphite-700 {
+    color: #e5edf8 !important;
+  }
+
+  .dark .text-graphite-600,
+  .dark .text-graphite-500,
+  .dark .text-graphite-400 {
+    color: #c0ccdd !important;
+  }
+
+  .dark .hover\:bg-graphite-50:hover,
+  .dark .hover\:bg-graphite-100:hover,
+  .dark .hover\:bg-graphite-800\/60:hover {
+    background-color: #263247 !important;
+  }
 }
 
 /* Components */

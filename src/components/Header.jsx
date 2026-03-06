@@ -19,7 +19,6 @@ import {
 const Header = ({
   user,
   sidebarCollapsed,
-  title = 'Painel',
   breadcrumb = ['Início', 'Painel'],
 }) => {
   // User name
@@ -88,7 +87,6 @@ const Header = ({
                 })}
               </BreadcrumbList>
             </Breadcrumb>
-            <h1 className="text-[1.32rem] font-semibold tracking-tight leading-tight text-graphite-900 dark:text-graphite-50">{title}</h1>
           </div>
 
           <div className="flex items-center space-x-3">
