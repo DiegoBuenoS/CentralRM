@@ -16,6 +16,23 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { Badge } from '../components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '../components/ui/tabs';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import {
+  ClipboardDocumentListIcon,
+  DocumentTextIcon,
+  PlayIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+} from '@heroicons/react/24/outline';
 
 const TIMESHEET_STORAGE_KEY = 'timesheet_entries_v1';
 const TIMESHEET_ACTIVE_STORAGE_KEY = 'timesheet_active_v1';
@@ -27,7 +44,7 @@ const PROJECTS = [
     tasks: [
       { id: 'task-login', name: 'Melhorias de Login' },
       { id: 'task-dashboard', name: 'Ajustes de Dashboard' },
-      { id: 'task-integracao', name: 'Integração com API RM' },
+      { id: 'task-integracao', name: 'Integracao com API RM' },
     ],
   },
   {
@@ -35,17 +52,17 @@ const PROJECTS = [
     name: 'App Mobile',
     tasks: [
       { id: 'task-ui-mobile', name: 'UI/UX Mobile' },
-      { id: 'task-auth-mobile', name: 'Autenticação Mobile' },
-      { id: 'task-release-mobile', name: 'Build e Publicação' },
+      { id: 'task-auth-mobile', name: 'Autenticacao Mobile' },
+      { id: 'task-release-mobile', name: 'Build e Publicacao' },
     ],
   },
   {
     id: 'prj-sustentacao',
-    name: 'Sustentação',
+    name: 'Sustentacao',
     tasks: [
-      { id: 'task-bugs', name: 'Correções de Bugs' },
-      { id: 'task-suporte', name: 'Suporte ao Usuário' },
-      { id: 'task-refatoracao', name: 'Refatoração Técnica' },
+      { id: 'task-bugs', name: 'Correcao de Bugs' },
+      { id: 'task-suporte', name: 'Suporte ao Usuario' },
+      { id: 'task-refatoracao', name: 'Refatoracao Tecnica' },
     ],
   },
 ];
@@ -75,6 +92,17 @@ const toDateTime = (date, time) => {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 };
 
+const shiftTime = (time, deltaMinutes) => {
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) return '';
+  const [hh, mm] = time.split(':').map(Number);
+  if (!Number.isFinite(hh) || !Number.isFinite(mm)) return '';
+  const base = hh * 60 + mm;
+  const total = ((base + deltaMinutes) % (24 * 60) + (24 * 60)) % (24 * 60);
+  const nextH = Math.floor(total / 60);
+  const nextM = total % 60;
+  return `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}`;
+};
+
 const findProject = (projectId) => PROJECTS.find((project) => project.id === projectId) || PROJECTS[0];
 
 const createMultiRow = () => {
@@ -89,17 +117,38 @@ const createMultiRow = () => {
   };
 };
 
+const createEntryRow = () => ({
+  id: `entry-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+  date: nowLocalDate(),
+  start: '',
+  end: '',
+});
+
+const modeLabel = (mode) => {
+  if (mode === 'timer') return 'Timer';
+  if (mode === 'multi-projeto') return 'Multi-projetos';
+  return 'Manual';
+};
+
+const modeBadgeClass = (mode) => {
+  if (mode === 'timer') return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  if (mode === 'multi-projeto') return 'border-sky-200 bg-sky-50 text-sky-700';
+  return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+};
+
 const TimeSheetModule = () => {
+  const [officeTab, setOfficeTab] = React.useState('inicio');
   const [showEntryForm, setShowEntryForm] = React.useState(false);
   const [showMultiProjectForm, setShowMultiProjectForm] = React.useState(false);
+
   const [projectId, setProjectId] = React.useState(PROJECTS[0].id);
   const [taskId, setTaskId] = React.useState(PROJECTS[0].tasks[0].id);
-  const [entryDate, setEntryDate] = React.useState(nowLocalDate);
-  const [startTime, setStartTime] = React.useState('');
-  const [endTime, setEndTime] = React.useState('');
+  const [entryRows, setEntryRows] = React.useState([createEntryRow()]);
+
   const [activeTimer, setActiveTimer] = React.useState(null);
   const [entries, setEntries] = React.useState([]);
   const [feedback, setFeedback] = React.useState({ type: '', message: '' });
+
   const [multiRows, setMultiRows] = React.useState([createMultiRow()]);
   const [multiProjectFilter, setMultiProjectFilter] = React.useState('all');
   const [multiTaskFilter, setMultiTaskFilter] = React.useState('');
@@ -151,52 +200,63 @@ const TimeSheetModule = () => {
 
   const handleManualEntry = () => {
     setFeedback({ type: '', message: '' });
-    if (!projectId || !taskId || !entryDate || !startTime || !endTime) {
-      setFeedback({ type: 'error', message: 'Preencha projeto, tarefa, data, início e fim.' });
+    if (!projectId || !taskId) {
+      setFeedback({ type: 'error', message: 'Selecione projeto e tarefa.' });
+      return;
+    }
+    if (!entryRows.length) {
+      setFeedback({ type: 'error', message: 'Adicione ao menos uma linha de apontamento.' });
       return;
     }
 
-    const start = toDateTime(entryDate, startTime);
-    const end = toDateTime(entryDate, endTime);
-    if (!start || !end) {
-      setFeedback({ type: 'error', message: 'Data ou horário inválido.' });
-      return;
+    const batchEntries = [];
+    for (const row of entryRows) {
+      if (!row.date || !row.start || !row.end) {
+        setFeedback({ type: 'error', message: 'Preencha data, início e fim em todas as linhas.' });
+        return;
+      }
+      const start = toDateTime(row.date, row.start);
+      const end = toDateTime(row.date, row.end);
+      if (!start || !end) {
+        setFeedback({ type: 'error', message: 'Existe linha com data/horário inválido.' });
+        return;
+      }
+      const diffMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
+      if (diffMinutes <= 0) {
+        setFeedback({ type: 'error', message: 'O horário final deve ser maior que o inicial em todas as linhas.' });
+        return;
+      }
+      batchEntries.push({
+        id: `ts-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        projectName: selectedProject.name,
+        taskName: selectedTask?.name || 'Tarefa',
+        date: row.date,
+        start: row.start,
+        end: row.end,
+        minutes: diffMinutes,
+        mode: 'manual',
+        createdAt: new Date().toISOString(),
+      });
     }
 
-    const diffMinutes = Math.round((end.getTime() - start.getTime()) / 60000);
-    if (diffMinutes <= 0) {
-      setFeedback({ type: 'error', message: 'O horário final deve ser maior que o inicial.' });
-      return;
-    }
-
-    const selectedTask = tasks.find((task) => task.id === taskId);
-    appendEntry({
-      projectName: selectedProject.name,
-      taskName: selectedTask?.name || 'Tarefa',
-      date: entryDate,
-      start: startTime,
-      end: endTime,
-      minutes: diffMinutes,
-      mode: 'manual',
-    });
-    setFeedback({ type: 'success', message: 'Apontamento manual registrado.' });
-    setStartTime('');
-    setEndTime('');
+    setEntries((prev) => [...batchEntries, ...prev]);
+    setFeedback({ type: 'success', message: `${batchEntries.length} apontamento(s) manual(is) registrado(s).` });
+    setEntryRows([createEntryRow()]);
     setShowEntryForm(false);
   };
 
   const handleStartTimer = () => {
     setFeedback({ type: '', message: '' });
     if (activeTimer) {
-      setFeedback({ type: 'error', message: 'Já existe um apontamento em andamento.' });
+      setFeedback({ type: 'error', message: 'Ja existe um apontamento em andamento.' });
       return;
     }
     if (!projectId || !taskId) {
       setFeedback({ type: 'error', message: 'Selecione projeto e tarefa antes de iniciar.' });
       return;
     }
+
     const now = new Date();
-    const selectedTask = tasks.find((task) => task.id === taskId);
     setActiveTimer({
       projectId,
       projectName: selectedProject.name,
@@ -212,9 +272,10 @@ const TimeSheetModule = () => {
   const handleStopTimer = () => {
     setFeedback({ type: '', message: '' });
     if (!activeTimer) {
-      setFeedback({ type: 'error', message: 'Não há apontamento ativo para encerrar.' });
+      setFeedback({ type: 'error', message: 'Nao ha apontamento ativo para encerrar.' });
       return;
     }
+
     const start = new Date(activeTimer.startedAt);
     const end = new Date();
     const diffMinutes = Math.max(1, Math.round((end.getTime() - start.getTime()) / 60000));
@@ -235,15 +296,26 @@ const TimeSheetModule = () => {
     setShowEntryForm(false);
   };
 
-  const manualStart = toDateTime(entryDate, startTime);
-  const manualEnd = toDateTime(entryDate, endTime);
-  const manualMinutes =
-    manualStart && manualEnd ? Math.round((manualEnd.getTime() - manualStart.getTime()) / 60000) : 0;
-  const isManualReady = Boolean(projectId && taskId && entryDate && startTime && endTime && manualMinutes > 0);
-  const canStartTimer = Boolean(!activeTimer && projectId && taskId);
-  const canStopTimer = Boolean(activeTimer);
-  const totalTrackedMinutes = entries.reduce((acc, entry) => acc + Number(entry.minutes || 0), 0);
-  const normalizedTaskFilter = multiTaskFilter.trim().toLowerCase();
+  const handleEntryRowChange = (rowId, field, value) => {
+    setEntryRows((prev) =>
+      prev.map((row) => {
+        if (row.id !== rowId) return row;
+        const next = { ...row, [field]: value };
+        if (field === 'start' && !row.end && value) {
+          next.end = shiftTime(value, 60);
+        }
+        return next;
+      })
+    );
+  };
+
+  const handleAddEntryRow = () => {
+    setEntryRows((prev) => [...prev, createEntryRow()]);
+  };
+
+  const handleRemoveEntryRow = (rowId) => {
+    setEntryRows((prev) => (prev.length <= 1 ? prev : prev.filter((row) => row.id !== rowId)));
+  };
 
   const handleMultiRowChange = (rowId, field, value) => {
     setMultiRows((prev) =>
@@ -273,17 +345,6 @@ const TimeSheetModule = () => {
     setMultiRows((prev) => prev.filter((row) => row.id !== rowId));
   };
 
-  const filteredRows = multiRows.filter((row) => {
-    const project = findProject(row.projectId);
-    const task = project.tasks.find((item) => item.id === row.taskId);
-    const projectMatch = multiProjectFilter === 'all' || row.projectId === multiProjectFilter;
-    const taskMatch =
-      !normalizedTaskFilter ||
-      task?.name?.toLowerCase().includes(normalizedTaskFilter) ||
-      row.taskId.toLowerCase().includes(normalizedTaskFilter);
-    return projectMatch && taskMatch;
-  });
-
   const handleSaveMultiRows = () => {
     setFeedback({ type: '', message: '' });
     if (multiRows.length === 0) {
@@ -294,20 +355,23 @@ const TimeSheetModule = () => {
     const preparedEntries = [];
     for (const row of multiRows) {
       if (!row.projectId || !row.taskId || !row.date || !row.start || !row.end) {
-        setFeedback({ type: 'error', message: 'Preencha todos os campos obrigatórios do grid.' });
+        setFeedback({ type: 'error', message: 'Preencha todos os campos obrigatorios do grid.' });
         return;
       }
+
       const start = toDateTime(row.date, row.start);
       const end = toDateTime(row.date, row.end);
       if (!start || !end) {
-        setFeedback({ type: 'error', message: 'Existe linha no grid com data/hora inválida.' });
+        setFeedback({ type: 'error', message: 'Existe linha no grid com data/horario invalido.' });
         return;
       }
+
       const minutes = Math.round((end.getTime() - start.getTime()) / 60000);
       if (minutes <= 0) {
-        setFeedback({ type: 'error', message: 'Horário final deve ser maior que o inicial em todas as linhas.' });
+        setFeedback({ type: 'error', message: 'Horario final deve ser maior que o inicial em todas as linhas.' });
         return;
       }
+
       const project = findProject(row.projectId);
       const task = project.tasks.find((item) => item.id === row.taskId);
       preparedEntries.push({
@@ -329,193 +393,315 @@ const TimeSheetModule = () => {
     setShowMultiProjectForm(false);
   };
 
+  const entryRowDurations = entryRows.map((row) => {
+    const start = toDateTime(row.date, row.start);
+    const end = toDateTime(row.date, row.end);
+    if (!start || !end) return 0;
+    return Math.round((end.getTime() - start.getTime()) / 60000);
+  });
+  const manualMinutesPreview = entryRowDurations.filter((minutes) => minutes > 0).reduce((acc, minutes) => acc + minutes, 0);
+  const isManualReady = Boolean(
+    projectId &&
+    taskId &&
+    entryRows.length > 0 &&
+    entryRows.every((row, index) => row.date && row.start && row.end && entryRowDurations[index] > 0)
+  );
+  const canStartTimer = Boolean(!activeTimer && projectId && taskId);
+  const canStopTimer = Boolean(activeTimer);
+  const totalTrackedMinutes = entries.reduce((acc, entry) => acc + Number(entry.minutes || 0), 0);
+  const showLauncherPanel = officeTab !== 'revisar';
+  const showSheetPanel = officeTab !== 'lancar';
+  const showMultiSection = showMultiProjectForm && officeTab !== 'revisar';
+
+  const normalizedTaskFilter = multiTaskFilter.trim().toLowerCase();
+  const filteredRows = multiRows.filter((row) => {
+    const project = findProject(row.projectId);
+    const task = project.tasks.find((item) => item.id === row.taskId);
+    const projectMatch = multiProjectFilter === 'all' || row.projectId === multiProjectFilter;
+    const taskMatch =
+      !normalizedTaskFilter ||
+      task?.name?.toLowerCase().includes(normalizedTaskFilter) ||
+      row.taskId.toLowerCase().includes(normalizedTaskFilter);
+    return projectMatch && taskMatch;
+  });
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <Card className="overflow-hidden border-blue-100 shadow-sm">
-        <CardContent className="relative p-0">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,#dbeafe,transparent_45%),radial-gradient(circle_at_bottom_left,#eef2ff,transparent_58%)] opacity-90" />
-          <div className="relative grid gap-3 p-6 md:grid-cols-3">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-blue-700">Gestão de Horas</p>
-              <h2 className="mt-1 text-2xl font-semibold text-graphite-900">TimeSheet</h2>
-              <p className="mt-2 text-sm text-graphite-600">
-                Escolha projeto e tarefa, depois aponte horas manualmente ou por cronômetro.
-              </p>
-            </div>
-            <div className="rounded-xl border border-white/80 bg-white/85 p-4 shadow-sm">
-              <p className="text-xs text-graphite-500">Registros</p>
-              <p className="mt-1 text-2xl font-semibold text-graphite-900">{entries.length}</p>
-            </div>
-            <div className="rounded-xl border border-white/80 bg-white/85 p-4 shadow-sm">
-              <p className="text-xs text-graphite-500">Horas totais</p>
-              <p className="mt-1 text-2xl font-semibold text-graphite-900">{formatMinutes(totalTrackedMinutes)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle>Registrar apontamento</CardTitle>
-              <CardDescription>
-                Clique em novo apontamento para abrir o card de registro.
-              </CardDescription>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!showEntryForm ? (
-                <Button onClick={() => setShowEntryForm(true)}>Novo apontamento</Button>
-              ) : (
-                <Button variant="outline" onClick={() => setShowEntryForm(false)}>
-                  Fechar
-                </Button>
-              )}
-              {!showMultiProjectForm ? (
-                <Button variant="secondary" onClick={() => setShowMultiProjectForm(true)}>
-                  Apontamento Multi-projetos
-                </Button>
-              ) : (
-                <Button variant="outline" onClick={() => setShowMultiProjectForm(false)}>
-                  Fechar multi-projetos
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        {showEntryForm ? (
-        <CardContent className="space-y-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3 transition-colors hover:border-blue-200 focus-within:border-emerald-300 focus-within:bg-emerald-50/40">
-              <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Projeto</label>
-              <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="h-11 border-blue-200 bg-white px-3.5 text-[15px] hover:border-blue-300 focus:ring-emerald-200 focus-visible:ring-emerald-200 focus:border-emerald-400 focus-visible:border-emerald-400">
-                  <SelectValue placeholder="Selecione um projeto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PROJECTS.map((project) => (
-                    <SelectItem key={project.id} value={project.id}>
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="mt-1.5 text-xs text-graphite-500">Defina o projeto para carregar as tarefas relacionadas.</p>
-            </div>
-
-            <div className="rounded-xl border border-blue-100 bg-blue-50/30 p-3 transition-colors hover:border-blue-200 focus-within:border-emerald-300 focus-within:bg-emerald-50/40">
-              <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Tarefa</label>
-              <Select value={taskId} onValueChange={setTaskId}>
-                <SelectTrigger className="h-11 border-blue-200 bg-white px-3.5 text-[15px] hover:border-blue-300 focus:ring-emerald-200 focus-visible:ring-emerald-200 focus:border-emerald-400 focus-visible:border-emerald-400">
-                  <SelectValue placeholder="Selecione uma tarefa" />
-                </SelectTrigger>
-                <SelectContent>
-                  {tasks.map((task) => (
-                    <SelectItem key={task.id} value={task.id}>
-                      {task.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="mt-1.5 text-xs text-graphite-500">
-                Tarefa atual: <span className="font-medium text-graphite-700">{selectedTask?.name || '-'}</span>
-              </p>
-            </div>
+    <div className="space-y-5">
+      <Card className="overflow-hidden border-slate-200 shadow-sm">
+        <CardContent className="p-0">
+          <div className="border-b border-blue-800 bg-gradient-to-r from-[#1f4f8b] via-[#255b9c] to-[#3069aa] px-5 py-3 text-white">
+            <p className="text-[11px] uppercase tracking-[0.18em] text-blue-100">Workspace</p>
+            <h2 className="mt-1 text-xl font-semibold tracking-tight">Time Sheet RM</h2>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div className="rounded-xl border border-blue-100 bg-white p-3 transition-colors hover:border-blue-200 focus-within:border-emerald-300 focus-within:bg-emerald-50/30">
-              <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Data do apontamento</label>
-              <Input
-                type="date"
-                value={entryDate}
-                onChange={(e) => setEntryDate(e.target.value)}
-                className="h-11 border-blue-200 px-3.5 text-[15px] hover:border-blue-300 focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
-              />
-            </div>
-            <div className="rounded-xl border border-blue-100 bg-white p-3 transition-colors hover:border-blue-200 focus-within:border-emerald-300 focus-within:bg-emerald-50/30">
-              <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Hora de início</label>
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="h-11 border-blue-200 px-3.5 text-[15px] hover:border-blue-300 focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
-              />
-            </div>
-            <div className="rounded-xl border border-blue-100 bg-white p-3 transition-colors hover:border-blue-200 focus-within:border-emerald-300 focus-within:bg-emerald-50/30">
-              <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Hora de fim</label>
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                className="h-11 border-blue-200 px-3.5 text-[15px] hover:border-blue-300 focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
-              />
-            </div>
+          <div className="border-b border-slate-200 bg-white px-4 py-2">
+            <Tabs value={officeTab} onValueChange={setOfficeTab}>
+              <TabsList className="h-9 rounded-md border-slate-300 bg-slate-100">
+                <TabsTrigger value="inicio" className="gap-1.5 text-xs">
+                  <TableCellsIcon className="h-4 w-4" />
+                  Inicio
+                </TabsTrigger>
+                <TabsTrigger value="lancar" className="gap-1.5 text-xs">
+                  <ClipboardDocumentListIcon className="h-4 w-4" />
+                  Lancar
+                </TabsTrigger>
+                <TabsTrigger value="revisar" className="gap-1.5 text-xs">
+                  <DocumentTextIcon className="h-4 w-4" />
+                  Revisar
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-graphite-200 bg-graphite-50/60 p-3">
-            <Button onClick={handleManualEntry} disabled={!isManualReady}>
-              Registrar manual
+          <div className="flex flex-wrap items-center gap-2 bg-[#f4f7fb] px-4 py-3">
+            <Button size="sm" onClick={() => { setOfficeTab('lancar'); setShowEntryForm((prev) => !prev); }}>
+              <PlayIcon className="h-4 w-4" />
+              {showEntryForm ? 'Fechar apontamento' : 'Novo apontamento'}
             </Button>
-            <Button variant="secondary" onClick={handleStartTimer} disabled={!canStartTimer}>
-              Iniciar apontamento
+            <Button size="sm" variant="secondary" onClick={() => { setOfficeTab('lancar'); setShowMultiProjectForm((prev) => !prev); }}>
+              <Squares2X2Icon className="h-4 w-4" />
+              {showMultiProjectForm ? 'Fechar multi-projetos' : 'Apontamento Multi-projetos'}
             </Button>
-            <Button variant="outline" onClick={handleStopTimer} disabled={!canStopTimer}>
-              Encerrar apontamento
+            <div className="h-6 w-px bg-slate-300" />
+            <Button size="sm" variant="ghost" onClick={() => setOfficeTab('revisar')}>
+              <DocumentTextIcon className="h-4 w-4" />
+              Revisar planilha
             </Button>
+            <Badge variant="secondary" className="border border-slate-300 bg-white text-slate-700">
+              Total: {formatMinutes(totalTrackedMinutes)}
+            </Badge>
             {activeTimer ? (
-              <Badge variant="secondary" className="border border-amber-200 bg-amber-100 text-amber-800">
+              <Badge variant="secondary" className="border border-amber-200 bg-amber-50 text-amber-800">
                 Em andamento: {activeTimer.projectName} • {activeTimer.taskName} • {activeTimer.startedTime}
               </Badge>
-            ) : (
-              <Badge variant="secondary" className="border border-graphite-200 bg-white text-graphite-700">
-                Nenhum apontamento ativo
-              </Badge>
-            )}
+            ) : null}
           </div>
-
-          <p className="text-xs text-graphite-500">
-            Duração prevista (manual):{' '}
-            <span className={manualMinutes > 0 ? 'font-medium text-graphite-700' : 'text-graphite-400'}>
-              {manualMinutes > 0 ? formatMinutes(manualMinutes) : '--'}
-            </span>
-          </p>
-
-          {feedback.message ? (
-            <p
-              className={`rounded-lg border px-3 py-2 text-sm ${
-                feedback.type === 'error'
-                  ? 'border-red-200 bg-red-50 text-red-700'
-                  : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              }`}
-            >
-              {feedback.message}
-            </p>
-          ) : null}
         </CardContent>
-        ) : (
-          <CardContent>
-            <div className="rounded-lg border border-dashed border-graphite-300 bg-graphite-50/60 p-6 text-center text-sm text-graphite-500">
-              Nenhum formulário aberto. Clique em <span className="font-medium text-graphite-700">Novo apontamento</span> para iniciar.
-            </div>
-          </CardContent>
-        )}
       </Card>
 
-      {showMultiProjectForm ? (
-        <Card className="border-emerald-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle>Apontamento Multi-projetos</CardTitle>
-            <CardDescription>
-              Edite o grid por linha para lançar vários apontamentos de uma vez.
-            </CardDescription>
+      <div className={`grid grid-cols-1 gap-5 ${showLauncherPanel && showSheetPanel ? 'xl:grid-cols-[360px_1fr]' : ''}`}>
+        {showLauncherPanel ? (
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-200 pb-3">
+            <CardTitle className="text-base">Painel de Lancamento</CardTitle>
+            <CardDescription>Preencha e registre horas em formato rapido.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[220px_1fr]">
+          <CardContent className="space-y-4 pt-4">
+            <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-600">
+              Clique em <span className="font-medium text-slate-800">Novo apontamento</span> para abrir o card de lançamento.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" onClick={() => setShowEntryForm(true)}>Abrir lançamento</Button>
+              <Button size="sm" variant="outline" onClick={() => setShowMultiProjectForm((prev) => !prev)}>
+                {showMultiProjectForm ? 'Fechar multi-projetos' : 'Abrir multi-projetos'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+        ) : null}
+
+        <Dialog open={showEntryForm} onOpenChange={setShowEntryForm}>
+          <DialogContent className="max-w-3xl border-slate-300 bg-gradient-to-b from-white to-slate-50/70">
+            <DialogHeader>
+              <DialogTitle>Novo apontamento</DialogTitle>
+              <DialogDescription>Preencha projeto, tarefa, data e horário para registrar.</DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">Projeto</label>
+                  <Select value={projectId} onValueChange={setProjectId}>
+                    <SelectTrigger className="h-11 border-slate-300 bg-white px-3.5 text-[15px] transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]">
+                      <SelectValue placeholder="Selecione um projeto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PROJECTS.map((project) => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">Tarefa</label>
+                  <Select value={taskId} onValueChange={setTaskId}>
+                    <SelectTrigger className="h-11 border-slate-300 bg-white px-3.5 text-[15px] transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]">
+                      <SelectValue placeholder="Selecione uma tarefa" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {tasks.map((task) => (
+                        <SelectItem key={task.id} value={task.id}>
+                          {task.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-semibold uppercase tracking-wide text-slate-600">Linhas de apontamento</label>
+                <div className="rounded-md border border-slate-200">
+                  <div className="hidden grid-cols-[180px_120px_120px_110px_84px] gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-600 md:grid">
+                    <span>Data</span>
+                    <span className="text-center">Início</span>
+                    <span className="text-center">Fim</span>
+                    <span className="text-right">Duração</span>
+                    <span className="text-right">Ação</span>
+                  </div>
+                  <div className="space-y-2 p-3">
+                    {entryRows.map((row, index) => {
+                      const duration = entryRowDurations[index] > 0 ? formatMinutes(entryRowDurations[index]) : '--';
+                      return (
+                        <div key={row.id} className="grid grid-cols-1 items-center gap-2 md:grid-cols-[180px_120px_120px_110px_84px]">
+                          <Input
+                            type="date"
+                            value={row.date}
+                            onChange={(event) => handleEntryRowChange(row.id, 'date', event.target.value)}
+                            onFocus={(event) => event.target.select()}
+                            className="h-10 w-[180px] border-slate-300 px-2.5 text-center text-[13px] font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
+                          />
+                          <Input
+                            type="time"
+                            step="60"
+                            value={row.start}
+                            onChange={(event) => handleEntryRowChange(row.id, 'start', event.target.value)}
+                            onFocus={(event) => event.target.select()}
+                            className="h-10 w-[120px] border-slate-300 px-2.5 text-center text-[13px] font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
+                          />
+                          <Input
+                            type="time"
+                            step="60"
+                            value={row.end}
+                            onChange={(event) => handleEntryRowChange(row.id, 'end', event.target.value)}
+                            onFocus={(event) => event.target.select()}
+                            className="h-10 w-[120px] border-slate-300 px-2.5 text-center text-[13px] font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
+                          />
+                          <div className="text-right text-sm font-semibold text-slate-700">{duration}</div>
+                          <div className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveEntryRow(row.id)}
+                              disabled={entryRows.length === 1}
+                            >
+                              Remover
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex justify-start">
+                  <Button variant="outline" size="sm" onClick={handleAddEntryRow}>
+                    Adicionar linha
+                  </Button>
+                </div>
+                <p className="text-[11px] text-slate-500">
+                  Dica: ao informar o início de uma linha, o fim sugere +1h automaticamente.
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                Duração total prevista: <span className="font-semibold text-slate-800">{manualMinutesPreview > 0 ? formatMinutes(manualMinutesPreview) : '--'}</span>
+              </div>
+
+              {feedback.message ? (
+                <p
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    feedback.type === 'error'
+                      ? 'border-red-200 bg-red-50 text-red-700'
+                      : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                  }`}
+                >
+                  {feedback.message}
+                </p>
+              ) : null}
+            </div>
+
+            <DialogFooter>
+              <div className="flex w-full flex-wrap items-center justify-end gap-2">
+                <DialogClose asChild>
+                  <Button variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button variant="secondary" onClick={handleStartTimer} disabled={!canStartTimer}>
+                  Iniciar
+                </Button>
+                <Button variant="outline" onClick={handleStopTimer} disabled={!canStopTimer}>
+                  Encerrar
+                </Button>
+                <Button onClick={handleManualEntry} disabled={!isManualReady}>
+                  Registrar apontamentos
+                </Button>
+              </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {showSheetPanel ? (
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-200 pb-3">
+            <CardTitle className="text-base">Planilha de Horas</CardTitle>
+            <CardDescription>Visualizacao em grade para leitura e conferencia rapida.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            {entries.length === 0 ? (
+              <div className="p-6 text-sm text-slate-600">Nenhum apontamento registrado.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-[840px] w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 bg-[#f4f7fb] text-left text-slate-700">
+                      <th className="px-3 py-2.5 font-semibold">Data</th>
+                      <th className="px-3 py-2.5 font-semibold">Projeto</th>
+                      <th className="px-3 py-2.5 font-semibold">Tarefa</th>
+                      <th className="px-3 py-2.5 font-semibold">Inicio</th>
+                      <th className="px-3 py-2.5 font-semibold">Fim</th>
+                      <th className="px-3 py-2.5 font-semibold">Total</th>
+                      <th className="px-3 py-2.5 font-semibold">Modo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {entries.map((entry) => (
+                      <tr key={entry.id} className="border-b border-slate-100 transition-colors hover:bg-slate-50">
+                        <td className="px-3 py-2.5">{entry.date}</td>
+                        <td className="px-3 py-2.5">{entry.projectName}</td>
+                        <td className="px-3 py-2.5">{entry.taskName}</td>
+                        <td className="px-3 py-2.5">{entry.start}</td>
+                        <td className="px-3 py-2.5">{entry.end}</td>
+                        <td className="px-3 py-2.5 font-semibold text-slate-900">{formatMinutes(entry.minutes)}</td>
+                        <td className="px-3 py-2.5">
+                          <Badge variant="secondary" className={`border ${modeBadgeClass(entry.mode)}`}>
+                            {modeLabel(entry.mode)}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        ) : null}
+      </div>
+
+      {showMultiSection ? (
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-200 pb-3">
+            <CardTitle className="text-base">Editor de Apontamento Multi-projetos</CardTitle>
+            <CardDescription>Edite o grid e salve varios lancamentos de uma vez.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[250px_1fr]">
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Filtrar projeto</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">Filtrar projeto</label>
                 <Select value={multiProjectFilter} onValueChange={setMultiProjectFilter}>
-                  <SelectTrigger className="h-11 border-emerald-200 bg-white px-3.5 text-[15px] hover:border-emerald-300 focus:ring-emerald-200">
+                  <SelectTrigger className="h-11 border-slate-300 bg-white px-3.5 text-[15px] transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]">
                     <SelectValue placeholder="Todos os projetos" />
                   </SelectTrigger>
                   <SelectContent>
@@ -529,33 +715,33 @@ const TimeSheetModule = () => {
                 </Select>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-semibold text-graphite-600">Filtrar tarefa</label>
+                <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-600">Filtrar tarefa</label>
                 <Input
                   value={multiTaskFilter}
                   onChange={(event) => setMultiTaskFilter(event.target.value)}
                   placeholder="Digite parte do nome da tarefa"
-                  className="h-11 border-emerald-200 px-3.5 text-[15px] hover:border-emerald-300 focus-visible:ring-emerald-200 focus-visible:border-emerald-400"
+                  className="h-11 border-slate-300 px-3.5 text-[15px] transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
                 />
               </div>
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-graphite-200 bg-white">
+            <div className="overflow-x-auto rounded-lg border border-slate-200">
               <table className="min-w-[980px] w-full text-sm">
                 <thead>
-                  <tr className="border-b border-graphite-200 bg-graphite-50 text-left text-graphite-600">
-                    <th className="px-3 py-2.5 font-medium">Projeto</th>
-                    <th className="px-3 py-2.5 font-medium">Tarefa</th>
-                    <th className="px-3 py-2.5 font-medium">Data</th>
-                    <th className="px-3 py-2.5 font-medium">Início</th>
-                    <th className="px-3 py-2.5 font-medium">Fim</th>
-                    <th className="px-3 py-2.5 font-medium">Duração</th>
-                    <th className="px-3 py-2.5 font-medium text-right">Ações</th>
+                  <tr className="border-b border-slate-200 bg-[#f4f7fb] text-left text-slate-700">
+                    <th className="px-3 py-2.5 font-semibold">Projeto</th>
+                    <th className="px-3 py-2.5 font-semibold">Tarefa</th>
+                    <th className="w-[155px] px-3 py-2.5 font-semibold">Data</th>
+                    <th className="w-[130px] px-3 py-2.5 font-semibold">Inicio</th>
+                    <th className="w-[130px] px-3 py-2.5 font-semibold">Fim</th>
+                    <th className="px-3 py-2.5 font-semibold">Duracao</th>
+                    <th className="px-3 py-2.5 font-semibold text-right">Acoes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-4 text-center text-sm text-graphite-500">
+                      <td colSpan={7} className="px-3 py-4 text-center text-sm text-slate-600">
                         Nenhuma linha para os filtros selecionados.
                       </td>
                     </tr>
@@ -568,13 +754,13 @@ const TimeSheetModule = () => {
                         rowStart && rowEnd ? Math.round((rowEnd.getTime() - rowStart.getTime()) / 60000) : 0;
 
                       return (
-                        <tr key={row.id} className="border-b border-graphite-100">
+                        <tr key={row.id} className="border-b border-slate-100 hover:bg-slate-50">
                           <td className="px-3 py-2">
                             <Select
                               value={row.projectId}
                               onValueChange={(value) => handleMultiRowChange(row.id, 'projectId', value)}
                             >
-                              <SelectTrigger className="h-10 border-emerald-200 bg-white px-3 text-sm">
+                              <SelectTrigger className="h-10 border-slate-300 bg-white px-3 text-sm transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -591,7 +777,7 @@ const TimeSheetModule = () => {
                               value={row.taskId}
                               onValueChange={(value) => handleMultiRowChange(row.id, 'taskId', value)}
                             >
-                              <SelectTrigger className="h-10 border-emerald-200 bg-white px-3 text-sm">
+                              <SelectTrigger className="h-10 border-slate-300 bg-white px-3 text-sm transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -608,27 +794,32 @@ const TimeSheetModule = () => {
                               type="date"
                               value={row.date}
                               onChange={(event) => handleMultiRowChange(row.id, 'date', event.target.value)}
-                              className="h-10 border-emerald-200 px-3 text-sm"
+                              onFocus={(event) => event.target.select()}
+                              className="h-10 max-w-[145px] border-slate-300 px-3 text-center text-sm font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
                             />
                           </td>
                           <td className="px-3 py-2">
                             <Input
                               type="time"
+                              step="60"
                               value={row.start}
                               onChange={(event) => handleMultiRowChange(row.id, 'start', event.target.value)}
-                              className="h-10 border-emerald-200 px-3 text-sm"
+                              onFocus={(event) => event.target.select()}
+                              className="h-10 max-w-[120px] border-slate-300 px-3 text-center text-sm font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
                             />
                           </td>
                           <td className="px-3 py-2">
                             <Input
                               type="time"
+                              step="60"
                               value={row.end}
                               onChange={(event) => handleMultiRowChange(row.id, 'end', event.target.value)}
-                              className="h-10 border-emerald-200 px-3 text-sm"
+                              onFocus={(event) => event.target.select()}
+                              className="h-10 max-w-[120px] border-slate-300 px-3 text-center text-sm font-mono tabular-nums transition-transform duration-150 focus:ring-0 focus:border-slate-500 focus:scale-[1.01]"
                             />
                           </td>
                           <td className="px-3 py-2">
-                            <span className={rowMinutes > 0 ? 'font-medium text-graphite-800' : 'text-graphite-400'}>
+                            <span className={rowMinutes > 0 ? 'font-semibold text-slate-900' : 'text-slate-400'}>
                               {rowMinutes > 0 ? formatMinutes(rowMinutes) : '--'}
                             </span>
                           </td>
@@ -654,73 +845,6 @@ const TimeSheetModule = () => {
           </CardContent>
         </Card>
       ) : null}
-
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader>
-          <CardTitle>Apontamentos</CardTitle>
-          <CardDescription>Histórico local dos seus registros de horas em formato de cards.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {entries.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-graphite-300 bg-graphite-50/60 p-6 text-center text-sm text-graphite-500">
-              Nenhum apontamento registrado ainda.
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-              {entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="rounded-xl border border-graphite-200 bg-white p-4 shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:shadow"
-                >
-                  <div className="mb-3 flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-xs text-graphite-500">{entry.date}</p>
-                      <p className="text-sm font-semibold text-graphite-900">{entry.projectName}</p>
-                      <p className="text-sm text-graphite-600">{entry.taskName}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-xs text-graphite-500">Total</p>
-                      <p className="text-base font-semibold text-graphite-900">{formatMinutes(entry.minutes)}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 text-sm">
-                    <div className="rounded-lg border border-graphite-200 bg-graphite-50 px-2.5 py-2">
-                      <p className="text-[11px] text-graphite-500">Início</p>
-                      <p className="font-medium text-graphite-800">{entry.start}</p>
-                    </div>
-                    <div className="rounded-lg border border-graphite-200 bg-graphite-50 px-2.5 py-2">
-                      <p className="text-[11px] text-graphite-500">Fim</p>
-                      <p className="font-medium text-graphite-800">{entry.end}</p>
-                    </div>
-                    <div className="rounded-lg border border-graphite-200 bg-graphite-50 px-2.5 py-2">
-                      <p className="text-[11px] text-graphite-500">Modo</p>
-                      <div className="mt-0.5">
-                        <Badge
-                          variant="secondary"
-                          className={
-                            entry.mode === 'timer'
-                              ? 'border border-emerald-200 bg-emerald-50 text-emerald-700'
-                              : entry.mode === 'multi-projeto'
-                              ? 'border border-violet-200 bg-violet-50 text-violet-700'
-                              : 'border border-blue-200 bg-blue-50 text-blue-700'
-                          }
-                        >
-                          {entry.mode === 'timer'
-                            ? 'Timer'
-                            : entry.mode === 'multi-projeto'
-                            ? 'Multi-projetos'
-                            : 'Manual'}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 };

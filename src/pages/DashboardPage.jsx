@@ -868,6 +868,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
   });
   const [apiKeyFormError, setApiKeyFormError] = useState('');
   const [travelExpenses, setTravelExpenses] = useState(initialTravelExpenses);
+  const [travelOfficeTab, setTravelOfficeTab] = useState('inicio');
   const [selectedTravelExpenseId, setSelectedTravelExpenseId] = useState(initialTravelExpenses[0]?.id || null);
   const [travelReportDialogOpen, setTravelReportDialogOpen] = useState(false);
   const [travelReportMapDialogOpen, setTravelReportMapDialogOpen] = useState(false);
@@ -3577,48 +3578,82 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
 
         return (
           <div className="space-y-6">
-            <div className="rounded-2xl border border-sky-200 bg-gradient-to-b from-white to-sky-50/60 p-6 shadow-sm">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Painel de Viagens</p>
-                  <h2 className="text-xl font-semibold text-blue-950">Despesas e prestação de contas</h2>
+            <Card className="overflow-hidden border-slate-200 shadow-sm">
+              <CardContent className="p-0">
+                <div className="border-b border-blue-800 bg-gradient-to-r from-[#1f4f8b] via-[#255b9c] to-[#3069aa] px-5 py-3 text-white">
+                  <p className="text-[11px] uppercase tracking-[0.18em] text-blue-100">Workspace</p>
+                  <h2 className="mt-1 text-xl font-semibold tracking-tight">Despesas de Viagem Office</h2>
                 </div>
-                <Button variant="default" size="default" onClick={handleOpenTravelDialog}>
-                  Nova solicitação
-                </Button>
-              </div>
-              <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-xl border border-blue-100 bg-white p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Solicitações</p>
-                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{travelExpenses.length}</p>
+                <div className="border-b border-slate-200 bg-white px-4 py-2">
+                  <Tabs value={travelOfficeTab} onValueChange={setTravelOfficeTab}>
+                    <TabsList className="h-9 rounded-md border-slate-300 bg-slate-100">
+                      <TabsTrigger value="inicio" className="text-xs">Início</TabsTrigger>
+                      <TabsTrigger value="lancar" className="text-xs">Lançar</TabsTrigger>
+                      <TabsTrigger value="revisar" className="text-xs">Revisar</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
                 </div>
-                <div className="rounded-xl border border-blue-100 bg-white p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Valor total</p>
-                  <p className="mt-1 text-2xl font-semibold text-graphite-900">
-                    R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
+                <div className="flex flex-wrap items-center gap-2 bg-[#f4f7fb] px-4 py-3">
+                  <Button variant="default" size="sm" onClick={handleOpenTravelDialog}>
+                    Nova solicitação
+                  </Button>
+                  <Button variant="secondary" size="sm" onClick={handleOpenTravelDialog}>
+                    Lançar despesa
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setTravelOfficeTab('revisar')}>
+                    Revisar grid
+                  </Button>
+                  <div className="h-6 w-px bg-slate-300" />
+                  <Badge variant="secondary" className="border border-slate-300 bg-white text-slate-700">
+                    Total: R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </Badge>
                 </div>
-                <div className="rounded-xl border border-blue-100 bg-white p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Integradas ao RM</p>
-                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{integratedCount}</p>
+              </CardContent>
+            </Card>
+
+            <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/70 p-6 shadow-sm">
+              {travelOfficeTab !== 'lancar' && (
+                <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Solicitações</p>
+                    <p className="mt-1 text-2xl font-semibold text-graphite-900">{travelExpenses.length}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Valor total</p>
+                    <p className="mt-1 text-2xl font-semibold text-graphite-900">
+                      R$ {totalTravelAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Integradas ao RM</p>
+                    <p className="mt-1 text-2xl font-semibold text-graphite-900">{integratedCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-slate-200 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Fluxo de pagamento</p>
+                    <p className="mt-1 text-2xl font-semibold text-graphite-900">{paymentFlowCount}</p>
+                    {pendingIntegrationCount > 0 && (
+                      <p className="mt-1 text-xs text-amber-700">{pendingIntegrationCount} aguardando integração</p>
+                    )}
+                  </div>
                 </div>
-                <div className="rounded-xl border border-blue-100 bg-white p-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-wide text-graphite-600">Fluxo de pagamento</p>
-                  <p className="mt-1 text-2xl font-semibold text-graphite-900">{paymentFlowCount}</p>
-                  {pendingIntegrationCount > 0 && (
-                    <p className="mt-1 text-xs text-amber-700">{pendingIntegrationCount} aguardando integração</p>
-                  )}
+              )}
+
+              {travelOfficeTab === 'lancar' && (
+                <div className="mb-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-slate-700">
+                  Use o botão <span className="font-semibold">Nova solicitação</span> para abrir o formulário de apontamento
+                  de despesas e anexos.
                 </div>
-              </div>
+              )}
+
               <DataTable
                 columns={despesasViagensColumns}
                 data={travelExpenses}
                 filterTitle="Filtros da Viagem"
-                filterContainerClassName="border-blue-200 bg-gradient-to-r from-blue-50 to-sky-50 p-4 shadow-sm dark:border-blue-800/60 dark:from-graphite-900 dark:to-graphite-800"
+                filterContainerClassName="border-slate-300 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:from-graphite-900 dark:to-graphite-800"
                 filterGridClassName="xl:grid-cols-5 gap-4"
-                filterLabelClassName="text-blue-800 dark:text-blue-100"
-                filterInputClassName="h-10 border-blue-200 bg-white shadow-sm focus:border-blue-400 focus:ring-blue-300 dark:border-blue-900/70 dark:bg-graphite-900"
-                filterSelectTriggerClassName="h-10 border-blue-200 bg-white shadow-sm focus:border-blue-400 focus:ring-blue-300 dark:border-blue-900/70 dark:bg-graphite-900"
+                filterLabelClassName="text-slate-700 dark:text-slate-100"
+                filterInputClassName="h-10 border-slate-300 bg-white shadow-sm focus:border-emerald-400 focus:ring-emerald-200 dark:border-slate-700 dark:bg-graphite-900"
+                filterSelectTriggerClassName="h-10 border-slate-300 bg-white shadow-sm focus:border-emerald-400 focus:ring-emerald-200 dark:border-slate-700 dark:bg-graphite-900"
                 onRowClick={(row) => {
                   setSelectedTravelExpenseId(row.id);
                   setTravelReportDialogOpen(true);
@@ -3626,8 +3661,8 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
                 getRowClassName={(row) =>
                   `cursor-pointer ${
                     selectedTravelExpenseId === row.id
-                      ? 'bg-blue-50/80 ring-1 ring-inset ring-blue-300'
-                      : 'hover:bg-blue-50/50'
+                      ? 'bg-slate-100 ring-1 ring-inset ring-slate-300'
+                      : 'hover:bg-slate-50'
                   }`
                 }
                 emptyMessage="Nenhuma despesa de viagem para os filtros selecionados."
@@ -3635,7 +3670,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
             </div>
 
             <Dialog open={travelReportDialogOpen} onOpenChange={setTravelReportDialogOpen}>
-              <DialogContent className="max-w-2xl border-blue-200 bg-gradient-to-b from-white to-blue-50/50">
+              <DialogContent className="max-w-2xl border-slate-300 bg-gradient-to-b from-white to-slate-50/70">
                 <DialogHeader>
                   <DialogTitle>Resumo da despesa</DialogTitle>
                   <DialogDescription>Formato de relatório para envio e impressão.</DialogDescription>
@@ -3794,7 +3829,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
             </Dialog>
 
             <Dialog open={travelReportMapDialogOpen} onOpenChange={setTravelReportMapDialogOpen}>
-              <DialogContent className="max-w-5xl border-blue-200 bg-gradient-to-b from-white to-blue-50/40">
+              <DialogContent className="max-w-5xl border-slate-300 bg-gradient-to-b from-white to-slate-50/70">
                 <DialogHeader>
                   <DialogTitle>Mapa do trajeto</DialogTitle>
                   <DialogDescription>Rota da solicitação selecionada.</DialogDescription>
@@ -4371,7 +4406,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
             </Dialog>
 
             <Dialog open={travelMapDialogOpen} onOpenChange={setTravelMapDialogOpen}>
-              <DialogContent className="max-w-5xl border-blue-200 bg-gradient-to-b from-white to-blue-50/40">
+              <DialogContent className="max-w-5xl border-slate-300 bg-gradient-to-b from-white to-slate-50/70">
                 <DialogHeader>
                   <DialogTitle>Mapa do trajeto</DialogTitle>
                   <DialogDescription>Visualização da rota entre origem e destino informados.</DialogDescription>
@@ -4411,7 +4446,7 @@ const DashboardPage = ({ initialPage = TRAVEL_FOCUS_PAGE }) => {
                 if (!open) setTravelRateioError('');
               }}
             >
-              <DialogContent className="max-w-3xl border-blue-200 bg-gradient-to-b from-white to-blue-50/50">
+              <DialogContent className="max-w-3xl border-slate-300 bg-gradient-to-b from-white to-slate-50/70">
                 <DialogHeader>
                   <DialogTitle>Rateio por centro de custo</DialogTitle>
                   <DialogDescription>Distribuição das despesas por percentual.</DialogDescription>

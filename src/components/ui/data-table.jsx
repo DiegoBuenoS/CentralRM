@@ -60,22 +60,22 @@ const DataTableFilters = ({
 
   return (
     <div
-      className={`mb-4 rounded-lg border border-blue-100 bg-blue-50/70 p-3 dark:border-graphite-700 dark:bg-graphite-900/55 ${filterContainerClassName}`.trim()}
+      className={`mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-graphite-700 dark:bg-graphite-900/55 ${filterContainerClassName}`.trim()}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-blue-700 dark:text-graphite-300">
+          <p className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-700 dark:text-graphite-300">
             <FunnelIcon className="h-3.5 w-3.5" />
             {filterTitle}
           </p>
-          <span className="rounded-full border border-blue-200 bg-white px-2 py-0.5 text-[11px] font-medium text-blue-800">
+          <span className="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700">
             {filteredCount} de {totalCount}
           </span>
         </div>
         <Button
           variant="outline"
           size="sm"
-          className="h-8 border-blue-200 bg-white text-blue-800 hover:bg-blue-50 dark:border-graphite-600 dark:bg-graphite-900 dark:text-graphite-200 dark:hover:bg-graphite-800"
+          className="h-8 border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-graphite-600 dark:bg-graphite-900 dark:text-graphite-200 dark:hover:bg-graphite-800"
           onClick={() => table.resetColumnFilters()}
         >
           Limpar filtros
@@ -105,7 +105,7 @@ const DataTableFilters = ({
                   onValueChange={(next) => column.setFilterValue(next === ALL_VALUE ? '' : next)}
                 >
                   <SelectTrigger
-                    className={`h-9 border-blue-200 bg-white text-graphite-700 focus:ring-2 focus:ring-blue-200 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:focus:ring-blue-900/30 ${filterSelectTriggerClassName}`.trim()}
+                    className={`h-9 border-slate-300 bg-white text-graphite-700 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:focus:ring-emerald-900/30 ${filterSelectTriggerClassName}`.trim()}
                   >
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
@@ -123,7 +123,7 @@ const DataTableFilters = ({
                   value={value || ''}
                   onChange={(event) => column.setFilterValue(event.target.value)}
                   placeholder={`Filtrar ${label}`}
-                  className={`h-9 border-blue-200 bg-white text-sm text-graphite-700 placeholder:text-graphite-400 focus:ring-2 focus:ring-blue-200 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:placeholder:text-graphite-400 dark:focus:ring-blue-900/30 ${filterInputClassName}`.trim()}
+                  className={`h-9 border-slate-300 bg-white text-sm text-graphite-700 placeholder:text-graphite-400 focus:ring-2 focus:ring-emerald-200 focus:border-emerald-400 dark:border-graphite-600 dark:bg-graphite-900/80 dark:text-graphite-100 dark:placeholder:text-graphite-400 dark:focus:ring-emerald-900/30 ${filterInputClassName}`.trim()}
                 />
               )}
             </div>
@@ -136,7 +136,7 @@ const DataTableFilters = ({
 };
 
 const DataTablePagination = ({ table, pageSizes = defaultPageSizes }) => (
-  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-blue-100 px-1 py-3 text-sm text-graphite-500 dark:border-graphite-700 dark:text-graphite-300">
+  <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-1 py-3 text-sm text-graphite-500 dark:border-graphite-700 dark:text-graphite-300">
     <div className="flex items-center gap-2">
       <span>Linhas por página</span>
       <Select
@@ -242,7 +242,7 @@ const DataTable = ({
         filterInputClassName={filterInputClassName}
         filterSelectTriggerClassName={filterSelectTriggerClassName}
       />
-      <div className={`border border-blue-100 rounded-md overflow-hidden dark:border-graphite-700 dark:bg-graphite-900/35 ${tableWrapperClassName}`.trim()}>
+      <div className={`border border-slate-200 rounded-md overflow-hidden dark:border-graphite-700 dark:bg-graphite-900/35 ${tableWrapperClassName}`.trim()}>
         <Table>
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (

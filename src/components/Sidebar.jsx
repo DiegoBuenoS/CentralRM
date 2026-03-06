@@ -46,14 +46,7 @@ const navigationSections = [
   {
     id: 'configuracoes',
     label: 'Configurações',
-    items: [
-      {
-        id: 'configuracoes-chaves-api',
-        label: 'Gestão de Chaves API',
-        icon: KeyIcon,
-        path: '/configuracoes/chaves-api',
-      },
-    ],
+    items: [],
   },
 ];
 
@@ -68,8 +61,8 @@ const NavButton = ({ item, collapsed, isActive, onNavigate }) => {
         collapsed ? 'px-0' : 'px-3'
       } ${
         isActive
-          ? 'bg-primary text-white shadow-sm ring-1 ring-primary/35 dark:bg-blue-600 dark:ring-blue-400/40'
-          : 'text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900 dark:text-graphite-300 dark:hover:bg-graphite-800 dark:hover:text-graphite-50'
+          ? 'bg-[#255b9c] text-white shadow-sm ring-1 ring-[#255b9c]/35 dark:bg-blue-600 dark:ring-blue-400/40'
+          : 'text-graphite-700 hover:bg-slate-100 hover:text-slate-900 dark:text-graphite-300 dark:hover:bg-graphite-800 dark:hover:text-graphite-50'
       }`}
       title={collapsed ? item.label : ''}
       aria-current={isActive ? 'page' : undefined}
@@ -90,11 +83,11 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
   const { collapsed } = useSidebar();
 
   return (
-    <SidebarRoot className="fixed left-0 top-0 z-50 overflow-x-hidden border-r border-graphite-200 bg-gradient-to-b from-white via-graphite-50 to-white shadow-[0_24px_48px_-36px_rgba(15,23,42,0.28)] dark:border-graphite-700 dark:bg-graphite-950">
+    <SidebarRoot className="fixed left-0 top-0 z-50 overflow-x-hidden border-r border-slate-300 bg-gradient-to-b from-[#f8fafc] via-white to-[#f8fafc] shadow-[0_24px_48px_-36px_rgba(15,23,42,0.28)] dark:border-graphite-700 dark:bg-graphite-950">
       <SidebarHeader className="flex h-16 items-center justify-between px-3">
         {!collapsed && (
           <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm dark:bg-blue-500">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#255b9c] shadow-sm dark:bg-blue-500">
               <span className="text-xs font-bold tracking-wide text-white">RM</span>
             </div>
             <div>
@@ -139,7 +132,7 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
         ))}
 
         {!collapsed && (
-          <div className="mx-2.5 rounded-xl border border-graphite-200 bg-graphite-50 p-3">
+          <div className="mx-2.5 rounded-xl border border-slate-300 bg-slate-50 p-3">
             <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-graphite-900">
               <Cog6ToothIcon className="h-3.5 w-3.5" />
               Ambiente Administrativo
@@ -170,6 +163,26 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
         >
           <UsersIcon className="h-5 w-5" />
           {!collapsed && <span className="text-sm font-medium">Gestão de Usuários</span>}
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            onNavigate({
+              id: 'configuracoes-chaves-api',
+              path: '/configuracoes/chaves-api',
+            })
+          }
+          className={`w-full rounded-xl py-2.5 transition-colors ${
+            collapsed ? 'px-0' : 'px-3'
+          } inline-flex items-center ${
+            collapsed ? 'justify-center' : 'gap-2.5'
+          } text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900 dark:text-graphite-300 dark:hover:bg-graphite-800 dark:hover:text-graphite-50`}
+          title={collapsed ? 'Gestão de Chaves API' : ''}
+          aria-current={currentPage === 'configuracoes-chaves-api' ? 'page' : undefined}
+        >
+          <KeyIcon className="h-5 w-5" />
+          {!collapsed && <span className="text-sm font-medium">Gestão de Chaves API</span>}
         </button>
 
         <button
