@@ -7,8 +7,6 @@ import {
   LockClosedIcon,
   ExclamationCircleIcon,
   CheckCircleIcon,
-  MoonIcon,
-  SunIcon,
   EyeIcon,
   EyeSlashIcon,
 } from '@heroicons/react/24/outline';
@@ -25,7 +23,6 @@ import {
 import { Separator } from '../components/ui/separator';
 import { loginUser } from '../services';
 import API_CONFIG from '../config/api.config';
-import { useTheme } from '../hooks/useTheme';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -43,7 +40,6 @@ const LoginPage = () => {
   const [success, setSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
-  const { isDarkMode, toggleTheme } = useTheme();
 
   const validateForm = () => {
     let isValid = true;
@@ -130,16 +126,6 @@ const LoginPage = () => {
             <CardHeader className="space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs uppercase tracking-[0.12em] text-graphite-600">Acesso Corporativo</p>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleTheme}
-                  aria-pressed={isDarkMode}
-                  className="text-graphite-600 hover:text-graphite-900"
-                >
-                  {isDarkMode ? <SunIcon className="h-4 w-4" /> : <MoonIcon className="h-4 w-4" />}
-                </Button>
               </div>
 
               <div className="flex items-center gap-3">

@@ -20,6 +20,8 @@ const readStoredConfig = () => {
   }
 };
 
+
+
 export const getRuntimeConfig = () => ({
   ...DEFAULT_RUNTIME_CONFIG,
   ...readStoredConfig(),

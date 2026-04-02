@@ -8,12 +8,9 @@ import {
   Cog6ToothIcon,
   ClockIcon,
   KeyIcon,
-  MoonIcon,
   ReceiptPercentIcon,
-  SunIcon,
   UsersIcon,
 } from '@heroicons/react/24/outline';
-import { useTheme } from '../hooks/useTheme';
 import {
   Sidebar as SidebarRoot,
   SidebarHeader,
@@ -79,7 +76,6 @@ const NavButton = ({ item, collapsed, isActive, onNavigate }) => {
 };
 
 const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
-  const { isDarkMode, toggleTheme } = useTheme();
   const { collapsed } = useSidebar();
 
   return (
@@ -183,21 +179,6 @@ const Sidebar = ({ onLogout, currentPage, onNavigate }) => {
         >
           <KeyIcon className="h-5 w-5" />
           {!collapsed && <span className="text-sm font-medium">Gestão de Chaves API</span>}
-        </button>
-
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className={`w-full rounded-xl py-2.5 transition-colors ${
-            collapsed ? 'px-0' : 'px-3'
-          } inline-flex items-center ${
-            collapsed ? 'justify-center' : 'gap-2.5'
-          } text-graphite-700 hover:bg-graphite-100 hover:text-graphite-900 dark:text-graphite-300 dark:hover:bg-graphite-800 dark:hover:text-graphite-50`}
-          title={collapsed ? 'Tema' : ''}
-          aria-pressed={isDarkMode}
-        >
-          {isDarkMode ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
-          {!collapsed && <span className="text-sm font-medium">{isDarkMode ? 'Tema claro' : 'Tema escuro'}</span>}
         </button>
 
         <button
